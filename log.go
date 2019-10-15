@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// Log record a specified level's log
 func Log(level string, v ...interface{}) {
 	numLevel := numLogLevel(level)
 	if numLevel < logLevel {
@@ -13,6 +14,7 @@ func Log(level string, v ...interface{}) {
 	stdLogger.Output(3, level, fmt.Sprint(v...))
 }
 
+// Logf record a specified level's formatted log
 func Logf(level string, format string, v ...interface{}) {
 	numLevel := numLogLevel(level)
 	if numLevel < logLevel {
@@ -21,6 +23,7 @@ func Logf(level string, format string, v ...interface{}) {
 	stdLogger.Output(3, level, fmt.Sprintf(format, v...))
 }
 
+// Logf record a specified level's log with a new line
 func Logln(level string, v ...interface{}) {
 	numLevel := numLogLevel(level)
 	if numLevel < logLevel {

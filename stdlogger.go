@@ -1,45 +1,46 @@
 package xlog
 
 import (
-	"sync"
-	"time"
 	"io"
 	"log"
 	"os"
 	"runtime"
+	"sync"
+	"time"
 )
 
+// StdLogger a standard logger
 type StdLogger struct {
-	mu 				sync.Mutex
-	Out 			io.Writer		// 日志输出对象
-	LogFile 		string			// 目标日志文件
-	ValidMark 		string			// 设置有效标记，不匹配的时候就重新初始化
-	buf 			[]byte
+	mu        sync.Mutex
+	Out       io.Writer // 日志输出对象
+	LogFile   string    // 目标日志文件
+	ValidMark string    // 设置有效标记，不匹配的时候就重新初始化
+	buf       []byte
 }
 
 // NewStdLogger create a new StdLogger, and return its address
 func NewStdLogger() *StdLogger {
 	stdLogger := &StdLogger{
-		mu : sync.Mutex{},
-		buf : make([]byte, 2048),
+		mu:  sync.Mutex{},
+		buf: make([]byte, 2048),
 	}
 	stdLogger.initOut()
 	return stdLogger
 }
 
-// 初始化输出对象
+// initOut 初始化输出对象
 func (sl *StdLogger) initOut() {
 	// 执行初始化
 	switch logOutputType {
-	case LogToStdOut:
+	case LogToStdout:
 		sl.Out = os.Stdout
-	case LogToStdErr:
+	case LogToStderr:
 		sl.Out = os.Stderr
 	case LogToFile:
 		// 设置日志文件
 		sl.LogFile = getLogFilePath()
 		sl.ValidMark = sl.calCurrentMark()
-		writer, err := os.OpenFile(sl.LogFile, os.O_CREATE | os.O_WRONLY | os.O_APPEND, 0666)
+		writer, err := os.OpenFile(sl.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			log.Printf("open log file [%s] failed : %s", sl.LogFile, err)
 			// 如果文件无法写入，则将日志输出到标准输出
@@ -65,7 +66,7 @@ func (sl *StdLogger) Output(calldepth int, level, s string) error {
 	var line int
 	sl.mu.Lock()
 	defer sl.mu.Unlock()
-	if logFlags & (Lshortfile|Llongfile) != 0 {
+	if logFlags&(Lshortfile|Llongfile) != 0 {
 		// Release lock while getting caller info - it's expensive.
 		sl.mu.Unlock()
 		var ok bool

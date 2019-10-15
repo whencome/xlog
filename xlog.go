@@ -18,14 +18,14 @@ const (
 
 // 定义输出类型
 const (
-	LogToStdOut = iota	// 输出到标准输出
-	LogToStdErr			// 输出到标准错误输出
-	LogToFile			// 输出到文件
+	LogToStdout = iota // 输出到标准输出
+	LogToStderr        // 输出到标准错误输出
+	LogToFile          // 输出到文件
 )
 
 // 定义日志切割类型
 const (
-	CutNone  = iota
+	CutNone = iota
 	CutByYear
 	CutByMonth
 	CutByDate
@@ -45,8 +45,8 @@ const (
 
 // 日志级别字符串
 const LogLevelDebug = "debug"
-const LogLevelInfo  = "info"
-const LogLevelWarn  = "warn"
+const LogLevelInfo = "info"
+const LogLevelWarn = "warn"
 const LogLevelError = "error"
 const LogLevelFatal = "fatal"
 
@@ -54,11 +54,13 @@ const LogLevelFatal = "fatal"
 
 // 定义日志存储目录，默认存储在当前目录下的logs目录
 var LogDir = "./logs"
+
 // 定义日志文件名前缀
 var LogFilePrefix = "log"
 
 // 定义日志输出类型
-var logOutputType = LogToStdOut
+var logOutputType = LogToStdout
+
 // 定义日志输出目标
 var logOutput = os.Stderr
 
@@ -78,21 +80,21 @@ var stdLogger *StdLogger = NewStdLogger()
 func numLogLevel(l string) int {
 	num := LevelError
 	switch l {
-	case LogLevelDebug :
+	case LogLevelDebug:
 		num = LevelDebug
-	case LogLevelInfo :
+	case LogLevelInfo:
 		num = LevelInfo
-	case LogLevelWarn :
+	case LogLevelWarn:
 		num = LevelWarn
-	case LogLevelError :
+	case LogLevelError:
 		num = LevelError
-	case LogLevelFatal :
+	case LogLevelFatal:
 		num = LevelFatal
 	}
 	return num
 }
 
-// SetLogDir 设置日志存储目录
+// SetLogFilePrefix 设置日志文件前缀
 func SetLogFilePrefix(prefix string) {
 	LogFilePrefix = prefix
 }
@@ -114,10 +116,10 @@ func SetLogLevel(level string) {
 	logLevel = numLevel
 }
 
-// SetLogOutput 设置日志输出类型
+// SetLogOutputType 设置日志输出类型
 func SetLogOutputType(out int) {
-	if out != LogToStdOut && out != LogToStdErr && out != LogToFile {
-		logOutputType = LogToStdOut
+	if out != LogToStdout && out != LogToStderr && out != LogToFile {
+		logOutputType = LogToStdout
 	}
 	logOutputType = out
 }
@@ -134,8 +136,3 @@ func SetLogCutType(t int) {
 	}
 	logCutType = t
 }
-
-
-
-
-
