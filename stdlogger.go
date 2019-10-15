@@ -11,11 +11,12 @@ import (
 
 // StdLogger a standard logger
 type StdLogger struct {
-	mu        sync.Mutex
-	Out       io.Writer // 日志输出对象
-	LogFile   string    // 目标日志文件
-	ValidMark string    // 设置有效标记，不匹配的时候就重新初始化
-	buf       []byte
+	mu         sync.Mutex
+	OutputType int
+	Out        io.Writer // 日志输出对象
+	LogFile    string    // 目标日志文件
+	ValidMark  string    // 设置有效标记，不匹配的时候就重新初始化
+	buf        []byte
 }
 
 // NewStdLogger create a new StdLogger, and return its address
@@ -30,11 +31,26 @@ func NewStdLogger() *StdLogger {
 
 // initOut 初始化输出对象
 func (sl *StdLogger) initOut() {
+	// 关闭之前的输出对象，以支持动态重置
+	if sl.Out != nil {
+		if logOutputType != sl.OutputType && sl.OutputType == LogToFile {
+			oldWriter := sl.Out
+			// 关闭之前的文件
+			go func() {
+				x, ok := oldWriter.(io.Closer)
+				if ok {
+					x.Close()
+				}
+			}()
+		}
+	}
 	// 执行初始化
 	switch logOutputType {
 	case LogToStdout:
+		sl.OutputType = LogToStdout
 		sl.Out = os.Stdout
 	case LogToStderr:
+		sl.OutputType = LogToStderr
 		sl.Out = os.Stderr
 	case LogToFile:
 		// 设置日志文件
@@ -44,8 +60,10 @@ func (sl *StdLogger) initOut() {
 		if err != nil {
 			log.Printf("open log file [%s] failed : %s", sl.LogFile, err)
 			// 如果文件无法写入，则将日志输出到标准输出
+			sl.OutputType = LogToStdout
 			sl.Out = os.Stdout
 		} else {
+			sl.OutputType = LogToFile
 			sl.Out = writer
 		}
 	}

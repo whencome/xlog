@@ -136,3 +136,11 @@ func SetLogCutType(t int) {
 	}
 	logCutType = t
 }
+
+// InitLogger 初始化logger
+func InitLogger() {
+	if stdLogger == nil {
+		return
+	}
+	stdLogger.initOut()
+}
