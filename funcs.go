@@ -2,21 +2,21 @@ package xlog
 
 import (
 	"fmt"
-	"time"
 	"strings"
+	"time"
 )
 
-// getLogCutTimeFmt 获取日志文件切割时间格式
-func getLogCutTimeFmt() string {
+// getLogRotateTimeFmt 获取日志文件切割时间格式
+func getLogRotateTimeFmt() string {
 	var timeFmt string
-	switch logCutType {
-	case CutByYear:
+	switch logRotateType {
+	case RotateByYear:
 		timeFmt = "2006"
-	case CutByMonth:
+	case RotateByMonth:
 		timeFmt = "200601"
-	case CutByDate:
+	case RotateByDate:
 		timeFmt = "20060102"
-	case CutByHour:
+	case RotateByHour:
 		timeFmt = "2006010203"
 	}
 	return timeFmt
@@ -24,11 +24,11 @@ func getLogCutTimeFmt() string {
 
 // getLogFilePath 获取日志文件路径
 func getLogFilePath() string {
-	if logCutType == CutNone {
+	if logRotateType == RotateNone {
 		return fmt.Sprintf("%s/%s%s.log", LogDir, LogFilePrefix, "all")
 	}
-	logCutTimeFmt := getLogCutTimeFmt()
-	return fmt.Sprintf("%s/%s%s.log", LogDir, LogFilePrefix, time.Now().Format(logCutTimeFmt))
+	logRotateTimeFmt := getLogRotateTimeFmt()
+	return fmt.Sprintf("%s/%s%s.log", LogDir, LogFilePrefix, time.Now().Format(logRotateTimeFmt))
 }
 
 // Cheap integer to fixed-width decimal ASCII. Give a negative width to avoid zero-padding.
@@ -51,11 +51,11 @@ func itoa(buf *[]byte, i int, wid int) {
 // formatLogPrefix 格式化日志前缀
 func formatLogPrefix(buf *[]byte, t time.Time, level string, file string, line int) {
 	// 时间
-	if logFlags & (Ldate|Ltime|Lmicroseconds) != 0 {
-		if logFlags & LUTC != 0 {
+	if logFlags&(Ldate|Ltime|Lmicroseconds) != 0 {
+		if logFlags&LUTC != 0 {
 			t = t.UTC()
 		}
-		if logFlags & Ldate != 0 {
+		if logFlags&Ldate != 0 {
 			year, month, day := t.Date()
 			itoa(buf, year, 4)
 			*buf = append(*buf, '/')
@@ -64,16 +64,16 @@ func formatLogPrefix(buf *[]byte, t time.Time, level string, file string, line i
 			itoa(buf, day, 2)
 			*buf = append(*buf, ' ')
 		}
-		if logFlags & (Ltime|Lmicroseconds) != 0 {
+		if logFlags&(Ltime|Lmicroseconds) != 0 {
 			hour, min, sec := t.Clock()
 			itoa(buf, hour, 2)
 			*buf = append(*buf, ':')
 			itoa(buf, min, 2)
 			*buf = append(*buf, ':')
 			itoa(buf, sec, 2)
-			if logFlags & Lmicroseconds != 0 {
+			if logFlags&Lmicroseconds != 0 {
 				*buf = append(*buf, '.')
-				itoa(buf, t.Nanosecond() / 1e3, 6)
+				itoa(buf, t.Nanosecond()/1e3, 6)
 			}
 			*buf = append(*buf, ' ')
 		}
@@ -83,8 +83,8 @@ func formatLogPrefix(buf *[]byte, t time.Time, level string, file string, line i
 	*buf = append(*buf, strings.ToUpper(level)...)
 	*buf = append(*buf, "] "...)
 	// 文件
-	if logFlags & (Lshortfile|Llongfile) != 0 {
-		if logFlags & Lshortfile != 0 {
+	if logFlags&(Lshortfile|Llongfile) != 0 {
+		if logFlags&Lshortfile != 0 {
 			short := file
 			for i := len(file) - 1; i > 0; i-- {
 				if file[i] == '/' {
@@ -100,4 +100,3 @@ func formatLogPrefix(buf *[]byte, t time.Time, level string, file string, line i
 		*buf = append(*buf, ": "...)
 	}
 }
-

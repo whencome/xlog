@@ -25,11 +25,11 @@ const (
 
 // 定义日志切割类型
 const (
-	CutNone = iota
-	CutByYear
-	CutByMonth
-	CutByDate
-	CutByHour
+	RotateNone = iota
+	RotateByYear
+	RotateByMonth
+	RotateByDate
+	RotateByHour
 )
 
 // flags
@@ -65,7 +65,7 @@ var logOutputType = LogToStdout
 var logOutput = os.Stderr
 
 // 定义日志切割类型
-var logCutType = CutByDate
+var logRotateType = RotateByDate
 
 // 设置日志记录级别
 var logLevel = LevelWarn
@@ -131,10 +131,10 @@ func SetLogFlags(flag int) {
 
 // SetLogCutType set the way to cut log files
 func SetLogCutType(t int) {
-	if t < CutNone || t > CutByHour {
-		t = CutByDate
+	if t < RotateNone || t > RotateByHour {
+		t = RotateByDate
 	}
-	logCutType = t
+	logRotateType = t
 }
 
 // InitLogger 初始化logger

@@ -71,10 +71,10 @@ func (sl *StdLogger) initOut() {
 
 // calCurrentMark 计算当前时间有效标记
 func (sl *StdLogger) calCurrentMark() string {
-	if logCutType == CutNone {
+	if logRotateType == RotateNone {
 		return ""
 	}
-	return time.Now().Format(getLogCutTimeFmt())
+	return time.Now().Format(getLogRotateTimeFmt())
 }
 
 // Output write log to stdout / file
@@ -108,7 +108,7 @@ func (sl *StdLogger) Output(calldepth int, level, s string) error {
 // Flush 用于将缓存中的日志内容吸入文件或者输出到标准输出设备
 func (sl *StdLogger) flush() error {
 	// 计算mark，用以确认输出文件
-	if logOutputType == LogToFile && logCutType != CutNone {
+	if logOutputType == LogToFile && logRotateType != RotateNone {
 		curMark := sl.calCurrentMark()
 		if curMark != sl.ValidMark {
 			oldWriter := sl.Out

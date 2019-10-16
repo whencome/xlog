@@ -15,8 +15,8 @@
 ```go
 // 设置日志输出类型
 // LogToFile - 输出到文件
-// LogToStdOut - 输出到标准输出
-// LogToStdErr - 输出到标准错误输出
+// LogToStdout - 输出到标准输出
+// LogToStderr - 输出到标准错误输出
 xlog.SetLogOutputType(xlog.LogToFile)
 // 设置日志等级，开发时可详尽记录日志，发布线上是修改此处的等级即可
 // 因此，此处的值建议放到配置文件中
@@ -27,7 +27,7 @@ xlog.SetLogFlags(xlog.Ldate | xlog.Ltime | xlog.Lmicroseconds | xlog.Llongfile)
 // 设置日志文件存储目录，仅当输出类型为 LogToFile 有效
 xlog.SetLogDir("/home/logs/test")
 // 设置日志文件切割类型
-xlog.SetLogCutType(xlog.CutByDate)
+xlog.SetLogRotateType(xlog.RotateByDate)
 // 设置日志文件名前缀，仅当输出类型为 LogToFile 有效
 xlog.SetLogFilePrefix("test_")
 ```
