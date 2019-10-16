@@ -129,8 +129,8 @@ func SetLogFlags(flag int) {
 	logFlags = flag
 }
 
-// SetLogCutType set the way to cut log files
-func SetLogCutType(t int) {
+// SetLogRotateType set the way to cut log files
+func SetLogRotateType(t int) {
 	if t < RotateNone || t > RotateByHour {
 		t = RotateByDate
 	}
