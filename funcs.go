@@ -2,6 +2,7 @@ package xlog
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -20,6 +21,23 @@ func getLogRotateTimeFmt() string {
 		timeFmt = "2006010203"
 	}
 	return timeFmt
+}
+
+// initLogDir 初始化日志目录
+func initLogDir(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		// 尝试创建目录
+		err = os.MkdirAll(path, os.ModePerm)
+		if err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, err
 }
 
 // getLogFilePath 获取日志文件路径

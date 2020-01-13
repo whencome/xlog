@@ -101,6 +101,7 @@ func SetLogFilePrefix(prefix string) {
 
 // SetLogDir 设置日志存储目录
 func SetLogDir(path string) {
+	initLogDir(path)
 	LogDir = path
 }
 
