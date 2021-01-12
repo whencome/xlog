@@ -6,9 +6,6 @@ import (
     "fmt"
     "reflect"
     "strings"
-
-    "github.com/whencome/gomodel/builder"
-    "github.com/whencome/gomodel/utils"
     
     "github.com/whencome/xlog"
 )
@@ -24,6 +21,7 @@ type Modeler interface {
     GetTableName() 	string
     AutoIncrementField() string
     GetDBFieldTag() string
+    GetConnection() (*sql.DB, error)
 }
 
 /************************************************************
@@ -161,7 +159,7 @@ func (mm *ModelManager) BuildBatchInsertSql(data interface{}) (string, error) {
         rv := reflect.ValueOf(modelObj)
         for _, field := range insertFields {
             propName := mm.FieldMaps[field]
-            val := utils.NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+            val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
             values = append(values, val)
         }
         if i > 0 {
@@ -190,7 +188,7 @@ func (mm *ModelManager) BuildInsertSql(object interface{}) (string, error) {
     rv := reflect.ValueOf(modelObj)
     for _, field := range insertFields {
         propName := mm.FieldMaps[field]
-        val := utils.NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+        val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
         values = append(values, val)
     }
     insertSql += fmt.Sprintf("(%s)", strings.Join(values, ","))
@@ -210,7 +208,7 @@ func (mm *ModelManager) BuildUpdateSql(object interface{}) (string, error) {
     rv := reflect.ValueOf(modelObj)
     for i, field := range updateFields {
         propName := mm.FieldMaps[field]
-        val := utils.NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+        val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
         if i > 0 {
             updateSQL += ", "
         }
@@ -219,7 +217,7 @@ func (mm *ModelManager) BuildUpdateSql(object interface{}) (string, error) {
     // 自增ID
     autoIncrementField := mm.Model.AutoIncrementField()
     propName := mm.FieldMaps[autoIncrementField]
-    idVal := utils.NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+    idVal := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
     updateSQL += fmt.Sprintf(" WHERE `%s` = %s ", autoIncrementField, idVal)
     return updateSQL, nil
 }
@@ -229,7 +227,7 @@ func (mm *ModelManager) BuildUpdateSqlByCond(params map[string]interface{}, cond
     if len(params) <= 0 {
         return "", errors.New("nothing to update")
     }
-    where, err := builder.NewConditionBuilder().Build(cond, "AND")
+    where, err := NewConditionBuilder().Build(cond, "AND")
     if err != nil {
         return "", err
     }
@@ -240,7 +238,7 @@ func (mm *ModelManager) BuildUpdateSqlByCond(params map[string]interface{}, cond
     updateSQL := fmt.Sprintf("UPDATE `%s` SET ", mm.Model.GetTableName())
     counter := 0
     for field, iv := range params {
-        val := utils.NewValue(iv).SQLValue()
+        val := NewValue(iv).SQLValue()
         if counter > 0 {
             updateSQL += ", "
         }
@@ -377,15 +375,15 @@ func (mm *ModelManager) MapToModeler(data map[string]string) Modeler {
         propTypeKind := reflectField.Type().Kind()
         switch propTypeKind {
         case reflect.String:
-            reflectField.SetString(utils.NewValue(val).String())
+            reflectField.SetString(NewValue(val).String())
         case reflect.Bool:
-            reflectField.SetBool(utils.NewValue(val).Boolean())
+            reflectField.SetBool(NewValue(val).Boolean())
         case reflect.Int64, reflect.Int, reflect.Int32, reflect.Int16, reflect.Int8:
-            reflectField.SetInt(utils.NewValue(val).Int64())
+            reflectField.SetInt(NewValue(val).Int64())
         case reflect.Uint64, reflect.Uint, reflect.Uint32, reflect.Uint16, reflect.Uint8:
-            reflectField.SetUint(utils.NewValue(val).Uint64())
+            reflectField.SetUint(NewValue(val).Uint64())
         case reflect.Float64:
-            reflectField.SetFloat(utils.NewValue(val).Float64())
+            reflectField.SetFloat(NewValue(val).Float64())
         default:   // 其他类型暂不支持
             break
         }

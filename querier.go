@@ -9,9 +9,7 @@ import (
 
     "github.com/whencome/xlog"
 
-    "github.com/whencome/gomodel/builder"
     "github.com/whencome/gomodel/sqlchecker"
-    "github.com/whencome/gomodel/utils"
 )
 
 // 定义联表方式
@@ -215,19 +213,7 @@ func (q *Querier) buildCondition() (string, error) {
     if ok {
         return condWhere.Build()
     }
-    return builder.NewConditionBuilder().Build(q.queryMaps["where"], "AND")
-}
-
-// quoteTableName 对表名添加“``”引用
-func (q *Querier) quoteTableName(tblName string) string {
-    if strings.Contains(tblName, "`") {
-        return tblName
-    }
-    if !strings.Contains(tblName, ".") {
-        return fmt.Sprintf("`%s`", tblName)
-    }
-    parts := strings.Split(tblName, ".")
-    return fmt.Sprintf("`%s`", strings.Join(parts, "`,`"))
+    return NewConditionBuilder().Build(q.queryMaps["where"], "AND")
 }
 
 // checkQuery 检查查询语法以及命令是否支持
@@ -255,29 +241,29 @@ func (q *Querier) checkQuery(querySQL string) error {
 func (q *Querier) buildQuery() error {
     if q.QuerySQL != "" {
         // 检查查询SQL是否存在语法问题
-        //err := q.checkQuery(q.QuerySQL)
-        //if err != nil {
-        //    return err
-        //}
+        err := q.checkQuery(q.QuerySQL)
+        if err != nil {
+           return err
+        }
         return nil
     }
     querySQL := bytes.Buffer{}
     querySQL.WriteString("SELECT ")
 
     // 查询字段
-    fields := utils.NewValue(q.queryMaps["fields"]).String()
+    fields := NewValue(q.queryMaps["fields"]).String()
     if fields == "" {
         fields = "*"
     }
     querySQL.WriteString(fields)
 
     // 表
-    tableName := utils.NewValue(q.queryMaps["table"]).String()
+    tableName := NewValue(q.queryMaps["table"]).String()
     if tableName == "" {
         return errors.New("query table not specified")
     }
     querySQL.WriteString(" FROM ")
-    querySQL.WriteString(q.quoteTableName(tableName))
+    querySQL.WriteString(quote(tableName))
     
     // 检查联表信息
     if len(q.joinTables) > 0 {
@@ -308,12 +294,12 @@ func (q *Querier) buildQuery() error {
     }
 
     // 检查是否对查询进行分组
-    groupBy := utils.NewValue(q.queryMaps["group_by"]).String()
+    groupBy := NewValue(q.queryMaps["group_by"]).String()
     if groupBy != "" {
         querySQL.WriteString(" GROUP BY ")
         querySQL.WriteString(groupBy)
         // 检查是否有分组过滤
-        having, err := builder.NewConditionBuilder().Build(q.queryMaps["having"], "AND")
+        having, err := NewConditionBuilder().Build(q.queryMaps["having"], "AND")
         if err != nil {
             return err
         }
@@ -324,15 +310,15 @@ func (q *Querier) buildQuery() error {
     }
 
     // 设置排序
-    orderBy := utils.NewValue(q.queryMaps["order_by"]).String()
+    orderBy := NewValue(q.queryMaps["order_by"]).String()
     if orderBy != "" {
         querySQL.WriteString(" ORDER BY ")
         querySQL.WriteString(orderBy)
     }
 
     // 设置limit信息
-    offset := utils.NewValue(q.queryMaps["offset"]).Int64()
-    limitNum := utils.NewValue(q.queryMaps["limit"]).Int64()
+    offset := NewValue(q.queryMaps["offset"]).Int64()
+    limitNum := NewValue(q.queryMaps["limit"]).Int64()
     if limitNum > 0 {
         querySQL.WriteString(fmt.Sprintf(" LIMIT %d, %d", offset, limitNum))
     }
@@ -358,12 +344,12 @@ func (q *Querier) buildCountQueryFromConditions() (string, error) {
     querySQL.WriteString("SELECT COUNT(0)")
 
     // 表
-    tableName := utils.NewValue(q.queryMaps["table"]).String()
+    tableName := NewValue(q.queryMaps["table"]).String()
     if tableName == "" {
         return "", errors.New("query table not specified")
     }
     querySQL.WriteString(" FROM ")
-    querySQL.WriteString(q.quoteTableName(tableName))
+    querySQL.WriteString(quote(tableName))
 
     // 检查联表信息
     if len(q.joinTables) > 0 {
