@@ -5,6 +5,7 @@ import (
     "errors"
     "fmt"
     "reflect"
+    "strconv"
     "strings"
     
     "github.com/whencome/xlog"
@@ -432,7 +433,7 @@ func (mm *ModelManager) MapToModeler(data map[string]string) Modeler {
 }
 
 // FindPage 分页查询
-func (mm *ModelManager) FindPage(db *sql.DB, conds interface{}, orderBy string, page, pageSize int) (*QueryResult, error) {
+func (mm *ModelManager) FindPage(conds interface{}, orderBy string, page, pageSize int) (*QueryResult, error) {
     return mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).QueryPage(page, pageSize)
 }
 
@@ -466,8 +467,17 @@ func (mm *ModelManager) FindAll(conds interface{}, orderBy string) ([]interface{
     return list, nil
 }
 
+// FindOne 查询单条数据
+func (mm *ModelManager) Count(conds interface{}) (int, error) {
+    data, err := mm.NewQuerier().Select("COUNT(0)").From(mm.Model.GetTableName()).Where(conds).QueryScalar()
+    if err != nil {
+        return 0, err
+    }
+    return strconv.Atoi(data)
+}
+
 // QueryRaw 根据SQL查询满足条件的全部数据
-func (mm *ModelManager) QueryAll(db *sql.DB, querySql string) (*QueryResult, error) {
+func (mm *ModelManager) QueryAll(querySql string) (*QueryResult, error) {
     queryRs, err := mm.NewRawQuerier(querySql).Query()
     if err != nil {
         return nil, err
@@ -476,12 +486,13 @@ func (mm *ModelManager) QueryAll(db *sql.DB, querySql string) (*QueryResult, err
 }
 
 // QueryRow 根据SQL查询满足条件的全部数据
-func (mm *ModelManager) QueryRow(db *sql.DB, querySql string) (map[string]string, error) {
+func (mm *ModelManager) QueryRow(querySql string) (map[string]string, error) {
     row, err := mm.NewRawQuerier(querySql).Limit(1).QueryRow()
     if err != nil {
         return nil, err
     }
     return row, nil
 }
+
 
 
