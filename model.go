@@ -103,7 +103,9 @@ func (mm *ModelManager) NewQuerier() *Querier {
 
 // NewRawQuerier 创建一个查询对象
 func (mm *ModelManager) NewRawQuerier(querySQL string) *Querier {
-    return NewRawQuerier(querySQL).SetOptions(mm.Settings)
+    // 获取数据库连接
+    conn, _ := mm.GetConnection()
+    return NewRawQuerier(querySQL).SetOptions(mm.Settings).Connect(conn)
 }
 
 // getInsertFields 获取插入的字段列表
@@ -264,16 +266,33 @@ func (mm *ModelManager) BuildDeleteSql(conds interface{}) (string, error) {
     return delSQL, nil
 }
 
+// GetConnection 获取数据库连接
+func (mm *ModelManager) GetConnection() (*sql.DB, error) {
+    conn, err := mm.Model.GetConnection()
+    if err != nil {
+        return nil, err
+    }
+    if conn == nil {
+        return nil, fmt.Errorf("get db connection of %s failed", mm.Model.GetDatabase())
+    }
+    return conn, nil
+}
+
 // Insert 插入一条新数据
-func (mm *ModelManager) Insert(db *sql.DB, obj interface{}) (int64, error) {
+func (mm *ModelManager) Insert(obj interface{}) (int64, error) {
     // 构造插入语句
     insertSQL, err := mm.BuildInsertSql(obj)
     xlog.Debugf("* Insert : %s", insertSQL)
     if err != nil {
         return 0, err
     }
+    // 获取数据库连接
+    conn, err := mm.GetConnection()
+    if err != nil {
+        return 0, err
+    }
     // 执行插入操作
-    result, err := db.Exec(insertSQL)
+    result, err := conn.Exec(insertSQL)
     if err != nil {
         xlog.Error("exec insert failed : ", err, ";  sql : ", insertSQL)
         return 0, err
@@ -282,15 +301,20 @@ func (mm *ModelManager) Insert(db *sql.DB, obj interface{}) (int64, error) {
 }
 
 // InsertBatch 批量插入数据
-func (mm *ModelManager) InsertBatch(db *sql.DB, objs interface{}) (int64, error) {
+func (mm *ModelManager) InsertBatch(objs interface{}) (int64, error) {
     // 构造插入语句
     insertSQL, err := mm.BuildBatchInsertSql(objs)
     xlog.Debugf("* Batch Insert : %s", insertSQL)
     if err != nil {
         return 0, err
     }
+    // 获取数据库连接
+    conn, err := mm.GetConnection()
+    if err != nil {
+        return 0, err
+    }
     // 执行插入操作
-    _, err = db.Exec(insertSQL)
+    _, err = conn.Exec(insertSQL)
     if err != nil {
         xlog.Error("exec batch insert failed : ", err, ";  sql : ", insertSQL)
         return 0, err
@@ -300,15 +324,20 @@ func (mm *ModelManager) InsertBatch(db *sql.DB, objs interface{}) (int64, error)
 }
 
 // Update 更新数据
-func (mm *ModelManager) Update(db *sql.DB, obj interface{}) (int64, error) {
+func (mm *ModelManager) Update(obj interface{}) (int64, error) {
     // 构造更新语句
     updateSQL, err := mm.BuildUpdateSql(obj)
     xlog.Debugf("* Update : %s", updateSQL)
     if err != nil {
         return 0, err
     }
+    // 获取数据库连接
+    conn, err := mm.GetConnection()
+    if err != nil {
+        return 0, err
+    }
     // 执行插入操作
-    result, err := db.Exec(updateSQL)
+    result, err := conn.Exec(updateSQL)
     if err != nil {
         xlog.Error("exec update failed : ", err, ";  sql : ", updateSQL)
         return 0, err
@@ -317,15 +346,20 @@ func (mm *ModelManager) Update(db *sql.DB, obj interface{}) (int64, error) {
 }
 
 // UpdateByCond 根据条件更新数据
-func (mm *ModelManager) UpdateByCond(db *sql.DB, params map[string]interface{}, cond interface{}) (int64, error) {
+func (mm *ModelManager) UpdateByCond(params map[string]interface{}, cond interface{}) (int64, error) {
     // 构造更新语句
     updateSQL, err := mm.BuildUpdateSqlByCond(params, cond)
     xlog.Debugf("* UpdateByCond : %s", updateSQL)
     if err != nil {
         return 0, err
     }
-    // 执行插入操作
-    result, err := db.Exec(updateSQL)
+    // 获取数据库连接
+    conn, err := mm.GetConnection()
+    if err != nil {
+        return 0, err
+    }
+    // 执行更新操作
+    result, err := conn.Exec(updateSQL)
     if err != nil {
         xlog.Error("exec update failed : ", err, ";  sql : ", updateSQL)
         return 0, err
@@ -334,15 +368,20 @@ func (mm *ModelManager) UpdateByCond(db *sql.DB, params map[string]interface{}, 
 }
 
 // Delete 删除数据
-func (mm *ModelManager) Delete(db *sql.DB, cond interface{}) (int64, error) {
+func (mm *ModelManager) Delete(cond interface{}) (int64, error) {
     // 构造删除语句
     delSQL, err := mm.BuildDeleteSql(cond)
     xlog.Debugf("* Delete : %s", delSQL)
     if err != nil {
         return 0, err
     }
-    // 执行插入操作
-    result, err := db.Exec(delSQL)
+    // 获取数据库连接
+    conn, err := mm.GetConnection()
+    if err != nil {
+        return 0, err
+    }
+    // 执行删除操作
+    result, err := conn.Exec(delSQL)
     if err != nil {
         xlog.Error("exec delete failed : ", err, ";  sql : ", delSQL)
         return 0, err
@@ -394,12 +433,12 @@ func (mm *ModelManager) MapToModeler(data map[string]string) Modeler {
 
 // FindPage 分页查询
 func (mm *ModelManager) FindPage(db *sql.DB, conds interface{}, orderBy string, page, pageSize int) (*QueryResult, error) {
-    return mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).QueryPage(db, page, pageSize)
+    return mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).QueryPage(page, pageSize)
 }
 
 // FindOne 查询单条数据
-func (mm *ModelManager) FindOne(db *sql.DB, conds interface{}, orderBy string) (Modeler, error) {
-    data, err := mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).QueryRow(db)
+func (mm *ModelManager) FindOne(conds interface{}, orderBy string) (Modeler, error) {
+    data, err := mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).QueryRow()
     if err != nil {
         return nil, err
     }
@@ -411,8 +450,8 @@ func (mm *ModelManager) FindOne(db *sql.DB, conds interface{}, orderBy string) (
 }
 
 // FindAll 查询满足条件的全部数据
-func (mm *ModelManager) FindAll(db *sql.DB, conds interface{}, orderBy string) ([]interface{}, error) {
-    queryRs, err := mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).Query(db)
+func (mm *ModelManager) FindAll(conds interface{}, orderBy string) ([]interface{}, error) {
+    queryRs, err := mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).Query()
     if err != nil {
         return nil, err
     }
@@ -429,7 +468,7 @@ func (mm *ModelManager) FindAll(db *sql.DB, conds interface{}, orderBy string) (
 
 // QueryRaw 根据SQL查询满足条件的全部数据
 func (mm *ModelManager) QueryAll(db *sql.DB, querySql string) (*QueryResult, error) {
-    queryRs, err := mm.NewRawQuerier(querySql).Query(db)
+    queryRs, err := mm.NewRawQuerier(querySql).Query()
     if err != nil {
         return nil, err
     }
@@ -438,7 +477,7 @@ func (mm *ModelManager) QueryAll(db *sql.DB, querySql string) (*QueryResult, err
 
 // QueryRow 根据SQL查询满足条件的全部数据
 func (mm *ModelManager) QueryRow(db *sql.DB, querySql string) (map[string]string, error) {
-    row, err := mm.NewRawQuerier(querySql).Limit(1).QueryRow(db)
+    row, err := mm.NewRawQuerier(querySql).Limit(1).QueryRow()
     if err != nil {
         return nil, err
     }

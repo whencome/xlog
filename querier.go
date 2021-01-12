@@ -90,6 +90,7 @@ type Querier struct {
     joinTables []*joinTable  // 联表信息
     QuerySQL string // 查询SQL
     Settings *Options // 是否开启查询前的SQL语法检测
+    conn     *sql.DB  // 数据库连接
 }
 
 // NewQuerier 创建一个空的Querier
@@ -108,6 +109,7 @@ func NewQuerier() *Querier {
         },
         joinTables : make([]*joinTable, 0),
         QuerySQL:"",
+        conn : nil,
         Settings:NewDefaultOptions(),  // 设置一个默认参数配置
     }
 }
@@ -124,6 +126,11 @@ func NewModelQuerier(m Modeler) *Querier {
     q := NewQuerier()
     q.queryMaps["table"] = m.GetTableName()
     q.queryMaps["fields"] = "*"
+    // 设置数据库连接
+    conn, err := m.GetConnection()
+    if err == nil && conn != nil {
+        q.conn = conn
+    }
     return q
 }
 
@@ -133,6 +140,22 @@ func (q *Querier) SetOptions(opts *Options) *Querier {
         return q
     }
     q.Settings = opts
+    return q
+}
+
+// doPreQueryCheck 执行查询前的检查
+func (q *Querier) doPreQueryCheck() error {
+    if q.conn == nil {
+        return errors.New("database connection not specified or unavailable")
+    }
+    return nil
+}
+
+// Connect 设置数据库连接
+func (q *Querier) Connect(conn *sql.DB) *Querier {
+    if conn != nil {
+        q.conn = conn
+    }
     return q
 }
 
@@ -427,7 +450,7 @@ func (q *Querier) buildCountQueryFromRawQuery() (string, error) {
 }
 
 // Query 执行查询,此处返回为切片，以保证返回值结果顺序与查询字段顺序一致
-func (q *Querier) Query(conn *sql.DB) (*QueryResult, error) {
+func (q *Querier) Query() (*QueryResult, error) {
     // 构建查询
     err := q.buildQuery()
     if err != nil {
@@ -435,9 +458,14 @@ func (q *Querier) Query(conn *sql.DB) (*QueryResult, error) {
         return nil, err
     }
     xlog.Debugf("[querier] Query : %s", q.QuerySQL)
+    // 执行查询前的检查
+    err = q.doPreQueryCheck()
+    if err != nil {
+        return nil, err
+    }
     // 执行查询
     result := NewQueryResult()
-    rows, err := conn.Query(q.QuerySQL)
+    rows, err := q.conn.Query(q.QuerySQL)
     if err != nil {
         return nil, err
     }
@@ -479,13 +507,20 @@ func (q *Querier) Query(conn *sql.DB) (*QueryResult, error) {
 }
 
 // 查询记录总数
-func (q *Querier) queryTotalCount(conn *sql.DB) (int, error) {
+func (q *Querier) queryTotalCount() (int, error) {
+    // 构造统计查询
     countQuery, err := q.buildCountQuery()
     if err != nil {
         return 0, err
     }
     xlog.Debugf("querier queryTotalCount : %s", countQuery)
-    countRow := conn.QueryRow(countQuery)
+    // 执行查询前的检查
+    err = q.doPreQueryCheck()
+    if err != nil {
+        return 0, err
+    }
+    // 查询
+    countRow := q.conn.QueryRow(countQuery)
     var totalCount int
     err = countRow.Scan(&totalCount)
     if err != nil {
@@ -495,23 +530,23 @@ func (q *Querier) queryTotalCount(conn *sql.DB) (int, error) {
 }
 
 // Count 查询记录总数
-func (q *Querier) Count(conn *sql.DB) (int, error) {
-    return q.queryTotalCount(conn)
+func (q *Querier) Count() (int, error) {
+    return q.queryTotalCount()
 }
 
 // QueryPage 查询分页信息
-func (q *Querier) QueryPage(conn *sql.DB, page, pageSize int) (*QueryResult, error) {
+func (q *Querier) QueryPage(page, pageSize int) (*QueryResult, error) {
     // 将page和pageSize转换成limit
     offset := (page - 1) * pageSize
     q.Offset(offset).Limit(pageSize)
     // 开始查询，查询分两步
     // 1. 查询总数量
-    totalCount, err := q.queryTotalCount(conn)
+    totalCount, err := q.queryTotalCount()
     if err != nil {
         return nil, err
     }
     // 2. 查询当前分页的数据
-    queryResult, err := q.Query(conn)
+    queryResult, err := q.Query()
     if err != nil {
         return nil, err
     }
@@ -522,9 +557,9 @@ func (q *Querier) QueryPage(conn *sql.DB, page, pageSize int) (*QueryResult, err
 }
 
 // QueryRow 查询单条记录
-func (q *Querier) QueryRow(conn *sql.DB) (map[string]string, error) {
+func (q *Querier) QueryRow() (map[string]string, error) {
     q.Limit(1)
-    queryResult, err := q.Query(conn)
+    queryResult, err := q.Query()
     if err != nil {
         return nil, err
     }
@@ -535,8 +570,8 @@ func (q *Querier) QueryRow(conn *sql.DB) (map[string]string, error) {
 }
 
 // QueryScalar 查询单个值
-func (q *Querier) QueryScalar(conn *sql.DB) (string, error) {
-    queryResult, err := q.Query(conn)
+func (q *Querier) QueryScalar() (string, error) {
+    queryResult, err := q.Query()
     if err != nil {
         return "", err
     }
