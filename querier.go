@@ -87,10 +87,10 @@ func NewQueryResult() *QueryResult {
 // Querier 查询对象
 type Querier struct {
     queryMaps   map[string]interface{}
-    joinTables []*joinTable  // 联表信息
-    QuerySQL string // 查询SQL
-    Settings *Options // 是否开启查询前的SQL语法检测
-    conn     *sql.DB  // 数据库连接
+    joinTables  []*joinTable  // 联表信息
+    QuerySQL    string // 查询SQL
+    Settings    *Options // 是否开启查询前的SQL语法检测
+    conn        *sql.DB  // 数据库连接
 }
 
 // NewQuerier 创建一个空的Querier
