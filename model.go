@@ -111,7 +111,8 @@ func (mm *ModelManager) NewOrCondition() *Condition {
 
 // NewQuerier 创建一个查询对象
 func (mm *ModelManager) NewQuerier() *Querier {
-    return NewModelQuerier(mm.Model).SetOptions(mm.Settings)
+    conn, _ := mm.GetConnection()
+    return NewModelQuerier(mm.Model).Connect(conn).SetOptions(mm.Settings)
 }
 
 // NewRawQuerier 创建一个查询对象

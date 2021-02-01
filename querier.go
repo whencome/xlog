@@ -126,11 +126,6 @@ func NewModelQuerier(m Modeler) *Querier {
     q := NewQuerier()
     q.queryMaps["table"] = m.GetTableName()
     q.queryMaps["fields"] = "*"
-    // 设置数据库连接
-    conn, err := m.GetConnection()
-    if err == nil && conn != nil {
-        q.conn = conn
-    }
     return q
 }
 
