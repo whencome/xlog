@@ -4,8 +4,8 @@ package gomodel
 type Options struct {
 	PreQuerySyntaxCheck	bool  // 查询前置语法检查
 	EnableSharding 		bool  // 是否支持sharding
-	DbShardingNum		int   // 数据库分库数量
-	TableShardingNum	int   // 每个数据库分表数量
+	DbShardingNum		int64   // 数据库分库数量
+	TableShardingNum	int64   // 每个数据库分表数量
 }
 
 // NewDefaultOptions 创建一个默认的Options
@@ -19,7 +19,7 @@ func NewDefaultOptions() *Options {
 }
 
 // NewShardingOptions 创建一个分库分表的Options
-func NewShardingOptions(tableNum, dbNum int) *Options {
+func NewShardingOptions(tableNum, dbNum int64) *Options {
 	return &Options{
 		PreQuerySyntaxCheck : true,
 		EnableSharding : true,

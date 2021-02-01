@@ -13,7 +13,7 @@ import (
 
 type ShardingModelManager struct {
 	*ModelManager
-	Sharding 		int
+	Sharding 		int64
 }
 
 // NewShardingModelManager 创建一个ShardingModelManager
@@ -26,14 +26,14 @@ func NewShardingModelManager(m Modeler, opts *Options) *ShardingModelManager {
 	}
 }
 
-// SetSharding 设置sharding值
-func (m *ShardingModelManager) SetSharding(v int) *ShardingModelManager {
+// UseSharding 设置使用的sharding值
+func (m *ShardingModelManager) UseSharding(v int64) *ShardingModelManager {
 	m.Sharding = v
 	return m
 }
 
 // GetSharding 获取Sharding值
-func (m *ShardingModelManager) GetSharding() (int, int, error) {
+func (m *ShardingModelManager) GetSharding() (int64, int64, error) {
 	if !m.Settings.EnableSharding || m.Settings.DbShardingNum <= 0 || m.Settings.TableShardingNum <= 0 {
 		return 0, 0, fmt.Errorf("SHARDING_UNAVAILABLE")
 	}
@@ -41,7 +41,7 @@ func (m *ShardingModelManager) GetSharding() (int, int, error) {
 		return 0, 0, fmt.Errorf("SHARDING_VALUE_INVALID")
 	}
 	tblSharding := m.Sharding % m.Settings.TableShardingNum
-	dbSharding := int(math.Floor(float64(tblSharding) / float64(m.Settings.DbShardingNum)))
+	dbSharding := int64(math.Floor(float64(tblSharding) / float64(m.Settings.DbShardingNum)))
 	return tblSharding, dbSharding, nil
 }
 
