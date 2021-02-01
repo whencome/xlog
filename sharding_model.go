@@ -1,8 +1,14 @@
 package gomodel
 
 import (
+	"errors"
 	"fmt"
 	"math"
+	"reflect"
+	"strconv"
+	"strings"
+
+	"github.com/whencome/xlog"
 )
 
 type ShardingModelManager struct {
@@ -56,6 +62,382 @@ func (m *ShardingModelManager) GetDatabase() string {
 	}
 	_, di, _ := m.GetSharding()
 	return fmt.Sprintf("%s_%d", m.Model.GetDatabase(), di)
+}
+
+// NewQuerier 创建一个查询对象
+func (m *ShardingModelManager) NewQuerier() *Querier {
+	conn, _ := m.GetConnection()
+	return NewModelQuerier(m.Model).Connect(conn).SetOptions(m.Settings)
+}
+
+// NewRawQuerier 创建一个查询对象
+func (m *ShardingModelManager) NewRawQuerier(querySQL string) *Querier {
+	// 获取数据库连接
+	conn, _ := m.GetConnection()
+	return NewRawQuerier(querySQL).SetOptions(m.Settings).Connect(conn)
+}
+
+// NewCommander 创建一个Commander对象
+func (m *ShardingModelManager) NewCommander() *Commander {
+	conn, _ := m.GetConnection()
+	return NewCommander(m.Settings).Connect(conn)
+}
+
+// BuildBatchInsertSql 构造批量插入语句
+func (m *ShardingModelManager) BuildBatchInsertSql(data interface{}) (string, error) {
+	if data == nil {
+		return "", errors.New("can not insert nil data")
+	}
+	var objects []interface{} = make([]interface{}, 0)
+	switch reflect.TypeOf(data).Kind() {
+	case reflect.Slice, reflect.Array:
+		valData := reflect.ValueOf(data)
+		arrSize := valData.Len()
+		if arrSize == 0 {
+			return "", errors.New("empty params")
+		}
+		for i := 0; i < arrSize; i++ {
+			objects = append(objects, valData.Index(i).Interface())
+		}
+	default:
+		return "", errors.New("invalid params")
+	}
+	// 先获取字段列表
+	insertFields := m.getInsertFields()
+	insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", m.GetTableName(), strings.Join(insertFields, "`,`"))
+	insertCount := 0
+	for i, object := range objects {
+		if !m.MatchObject(object) {
+			continue
+		}
+		modelObj, _ := object.(Modeler)
+		values := make([]string, 0)
+		rv := reflect.ValueOf(modelObj)
+		for _, field := range insertFields {
+			propName := m.FieldMaps[field]
+			val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+			values = append(values, val)
+		}
+		if i > 0 {
+			insertSql += ","
+		}
+		insertSql += fmt.Sprintf("(%s)", strings.Join(values, ","))
+		insertCount++
+	}
+	if insertCount <= 0 {
+		return "", errors.New("no any qualified data to insert")
+	}
+	return insertSql, nil
+}
+
+// BuildInsertSql 构造单条插入语句
+func (m *ShardingModelManager) BuildInsertSql(object interface{}) (string, error) {
+	// 类型检查
+	if !m.MatchObject(object) {
+		return "", fmt.Errorf("insert action expect a %T object, but %T found", m.Model, object)
+	}
+	// 先获取字段列表
+	insertFields := m.getInsertFields()
+	insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", m.GetTableName(), strings.Join(insertFields, "`,`"))
+	modelObj, _ := object.(Modeler)
+	values := make([]string, 0)
+	rv := reflect.ValueOf(modelObj)
+	for _, field := range insertFields {
+		propName := m.FieldMaps[field]
+		val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+		values = append(values, val)
+	}
+	insertSql += fmt.Sprintf("(%s)", strings.Join(values, ","))
+	return insertSql, nil
+}
+
+// BuildUpdateSql 构造更新语句
+func (m *ShardingModelManager) BuildUpdateSql(object interface{}) (string, error) {
+	// 类型检查
+	if !m.MatchObject(object) {
+		return "", fmt.Errorf("update action expect a %T object, but %T found", m.Model, object)
+	}
+	// 先获取字段列表
+	updateFields := m.getInsertFields()
+	updateSQL := fmt.Sprintf("UPDATE `%s` SET ", m.GetTableName())
+	modelObj, _ := object.(Modeler)
+	rv := reflect.ValueOf(modelObj)
+	for i, field := range updateFields {
+		propName := m.FieldMaps[field]
+		val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+		if i > 0 {
+			updateSQL += ", "
+		}
+		updateSQL += fmt.Sprintf(" `%s` = %s", field, val)
+	}
+	// 自增ID
+	autoIncrementField := m.Model.AutoIncrementField()
+	propName := m.FieldMaps[autoIncrementField]
+	idVal := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+	updateSQL += fmt.Sprintf(" WHERE `%s` = %s ", autoIncrementField, idVal)
+	return updateSQL, nil
+}
+
+// BuildUpdateSqlByCond 构造更新语句
+func (m *ShardingModelManager) BuildUpdateSqlByCond(params map[string]interface{}, cond interface{}) (string, error) {
+	if len(params) <= 0 {
+		return "", errors.New("nothing to update")
+	}
+	where, err := NewConditionBuilder().Build(cond, "AND")
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(where) == "" {
+		return "", errors.New("update condition can not be empty")
+	}
+	// 构造更新语句
+	updateSQL := fmt.Sprintf("UPDATE `%s` SET ", m.GetTableName())
+	counter := 0
+	for field, iv := range params {
+		val := NewValue(iv).SQLValue()
+		if counter > 0 {
+			updateSQL += ", "
+		}
+		updateSQL += fmt.Sprintf(" `%s` = '%s'", field, val)
+		counter++
+	}
+	updateSQL += fmt.Sprintf(" WHERE %s ", where)
+	return updateSQL, nil
+}
+
+// BuildDeleteSql 构造删除语句
+func (m *ShardingModelManager) BuildDeleteSql(conds interface{}) (string, error) {
+	delSQL := fmt.Sprintf("DELETE FROM `%s` WHERE ", m.GetTableName())
+	where, err := BuildCondition(conds)
+	if err != nil {
+		return "", err
+	}
+	// 不支持无条件删除
+	if where == "" {
+		return "", fmt.Errorf("delete condition can not be empty")
+	}
+	delSQL += where
+	return delSQL, nil
+}
+
+// GetConnection 获取数据库连接
+// func (m *ShardingModelManager) GetConnection() (*sql.DB, error) {
+// 	return nil, fmt.Errorf("get db connection of %s failed", m.GetDatabase())
+// }
+
+// Insert 插入一条新数据
+func (m *ShardingModelManager) Insert(obj interface{}) (int64, error) {
+	// 构造插入语句
+	insertSQL, err := m.BuildInsertSql(obj)
+	xlog.Debugf("* Insert : %s", insertSQL)
+	if err != nil {
+		return 0, err
+	}
+	// 获取数据库连接
+	conn, err := m.GetConnection()
+	if err != nil {
+		return 0, err
+	}
+	// 执行插入操作
+	result, err := conn.Exec(insertSQL)
+	if err != nil {
+		xlog.Error("exec insert failed : ", err, ";  sql : ", insertSQL)
+		return 0, err
+	}
+	return result.LastInsertId()
+}
+
+// InsertBatch 批量插入数据
+func (m *ShardingModelManager) InsertBatch(objs interface{}) (int64, error) {
+	// 构造插入语句
+	insertSQL, err := m.BuildBatchInsertSql(objs)
+	xlog.Debugf("* Batch Insert : %s", insertSQL)
+	if err != nil {
+		return 0, err
+	}
+	// 获取数据库连接
+	conn, err := m.GetConnection()
+	if err != nil {
+		return 0, err
+	}
+	// 执行插入操作
+	_, err = conn.Exec(insertSQL)
+	if err != nil {
+		xlog.Error("exec batch insert failed : ", err, ";  sql : ", insertSQL)
+		return 0, err
+	}
+	// 只返回是否成功
+	return 1, nil
+}
+
+// Update 更新数据
+func (m *ShardingModelManager) Update(obj interface{}) (int64, error) {
+	// 构造更新语句
+	updateSQL, err := m.BuildUpdateSql(obj)
+	xlog.Debugf("* Update : %s", updateSQL)
+	if err != nil {
+		return 0, err
+	}
+	// 获取数据库连接
+	conn, err := m.GetConnection()
+	if err != nil {
+		return 0, err
+	}
+	// 执行插入操作
+	result, err := conn.Exec(updateSQL)
+	if err != nil {
+		xlog.Error("exec update failed : ", err, ";  sql : ", updateSQL)
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+// UpdateByCond 根据条件更新数据
+func (m *ShardingModelManager) UpdateByCond(params map[string]interface{}, cond interface{}) (int64, error) {
+	// 构造更新语句
+	updateSQL, err := m.BuildUpdateSqlByCond(params, cond)
+	xlog.Debugf("* UpdateByCond : %s", updateSQL)
+	if err != nil {
+		return 0, err
+	}
+	// 获取数据库连接
+	conn, err := m.GetConnection()
+	if err != nil {
+		return 0, err
+	}
+	// 执行更新操作
+	result, err := conn.Exec(updateSQL)
+	if err != nil {
+		xlog.Error("exec update failed : ", err, ";  sql : ", updateSQL)
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+// Delete 删除数据
+func (m *ShardingModelManager) Delete(cond interface{}) (int64, error) {
+	// 构造删除语句
+	delSQL, err := m.BuildDeleteSql(cond)
+	xlog.Debugf("* Delete : %s", delSQL)
+	if err != nil {
+		return 0, err
+	}
+	// 获取数据库连接
+	conn, err := m.GetConnection()
+	if err != nil {
+		return 0, err
+	}
+	// 执行删除操作
+	result, err := conn.Exec(delSQL)
+	if err != nil {
+		xlog.Error("exec delete failed : ", err, ";  sql : ", delSQL)
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+// MapToModeler 将map转换为Modeler对象(待测试)
+func (m *ShardingModelManager) MapToModeler(data map[string]string) Modeler {
+	if len(data) == 0 || m.Model == nil {
+		return nil
+	}
+	// 创建对象并进行转换
+	t := reflect.TypeOf(m.Model)
+	// 指针类型获取真正type需要调用Elem
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+	// 调用反射创建对象
+	newModel := reflect.New(t)
+	// 遍历字段列表并设置值
+	for field, val := range data {
+		// 1. 检查model是否包含该字段
+		propName, ok := m.FieldMaps[field]
+		if !ok {
+			continue
+		}
+		// 设置值
+		reflectField := newModel.Elem().FieldByName(propName)
+		propTypeKind := reflectField.Type().Kind()
+		switch propTypeKind {
+		case reflect.String:
+			reflectField.SetString(NewValue(val).String())
+		case reflect.Bool:
+			reflectField.SetBool(NewValue(val).Boolean())
+		case reflect.Int64, reflect.Int, reflect.Int32, reflect.Int16, reflect.Int8:
+			reflectField.SetInt(NewValue(val).Int64())
+		case reflect.Uint64, reflect.Uint, reflect.Uint32, reflect.Uint16, reflect.Uint8:
+			reflectField.SetUint(NewValue(val).Uint64())
+		case reflect.Float64:
+			reflectField.SetFloat(NewValue(val).Float64())
+		default:   // 其他类型暂不支持
+			break
+		}
+	}
+	// 返回结果
+	return newModel.Interface().(Modeler)
+}
+
+// FindPage 分页查询
+func (m *ShardingModelManager) FindPage(conds interface{}, orderBy string, page, pageSize int) (*QueryResult, error) {
+	return m.NewQuerier().From(m.GetTableName()).Where(conds).OrderBy(orderBy).QueryPage(page, pageSize)
+}
+
+// FindOne 查询单条数据
+func (m *ShardingModelManager) FindOne(conds interface{}, orderBy string) (Modeler, error) {
+	data, err := m.NewQuerier().From(m.GetTableName()).Where(conds).OrderBy(orderBy).QueryRow()
+	if err != nil {
+		return nil, err
+	}
+	if data == nil {
+		return nil, nil
+	}
+	mData := m.MapToModeler(data)
+	return mData, nil
+}
+
+// FindAll 查询满足条件的全部数据
+func (m *ShardingModelManager) FindAll(conds interface{}, orderBy string) ([]interface{}, error) {
+	queryRs, err := m.NewQuerier().From(m.GetTableName()).Where(conds).OrderBy(orderBy).Query()
+	if err != nil {
+		return nil, err
+	}
+	if queryRs.RowsCount == 0 {
+		return nil, nil
+	}
+	list := make([]interface{}, 0)
+	for _, d := range queryRs.Rows {
+		v := m.MapToModeler(d)
+		list = append(list, v)
+	}
+	return list, nil
+}
+
+// FindOne 查询单条数据
+func (m *ShardingModelManager) Count(conds interface{}) (int, error) {
+	data, err := m.NewQuerier().Select("COUNT(0)").From(m.GetTableName()).Where(conds).QueryScalar()
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(data)
+}
+
+// QueryRaw 根据SQL查询满足条件的全部数据
+func (m *ShardingModelManager) QueryAll(querySql string) (*QueryResult, error) {
+	queryRs, err := m.NewRawQuerier(querySql).Query()
+	if err != nil {
+		return nil, err
+	}
+	return queryRs, nil
+}
+
+// QueryRow 根据SQL查询满足条件的全部数据
+func (m *ShardingModelManager) QueryRow(querySql string) (map[string]string, error) {
+	row, err := m.NewRawQuerier(querySql).Limit(1).QueryRow()
+	if err != nil {
+		return nil, err
+	}
+	return row, nil
 }
 
 

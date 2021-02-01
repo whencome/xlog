@@ -29,6 +29,7 @@ type Modeler interface {
  ************************************************************/
 
 type Manager interface {
+    SetDBInitFunc(func()(*sql.DB, error))
     GetConnection() (*sql.DB, error)
 }
 
@@ -39,6 +40,7 @@ type ModelManager struct {
     Fields          []string
     FieldMaps       map[string]string
     Settings        *Options
+    GetDBFunc       func()(*sql.DB, error)
 }
 
 // NewModelManager 创建一个新的ModelManager
@@ -97,6 +99,16 @@ func (mm *ModelManager) GetDatabase() string {
         return ""
     }
     return mm.Model.GetDatabase()
+}
+
+// SetDBInitFunc 设置数据库初始化函数
+func (mm *ModelManager) SetDBInitFunc(f func()(*sql.DB, error)) {
+    mm.GetDBFunc = f
+}
+
+// GetConnection 获取数据库连接
+func (mm *ModelManager) GetConnection() (*sql.DB, error) {
+    return mm.GetDBFunc()
 }
 
 // NewAndCondition 创建一个AND条件组
@@ -290,11 +302,6 @@ func (mm *ModelManager) BuildDeleteSql(conds interface{}) (string, error) {
     }
     delSQL += where
     return delSQL, nil
-}
-
-// GetConnection 获取数据库连接
-func (mm *ModelManager) GetConnection() (*sql.DB, error) {
-    return nil, fmt.Errorf("get db connection of %s failed", mm.GetDatabase())
 }
 
 // Insert 插入一条新数据
