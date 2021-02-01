@@ -41,10 +41,14 @@ func (c *Commander) Connect(conn *sql.DB) *Commander {
 
 // BeginTransaction 开启事务
 func (c *Commander) BeginTransaction() error {
+	if c.inTrans {
+		return nil
+	}
 	tx, err := c.conn.Begin()
 	if err != nil {
 		return err
 	}
+	c.inTrans = true
 	c.tx = tx
 	return nil
 }

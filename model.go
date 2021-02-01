@@ -457,6 +457,23 @@ func (mm *ModelManager) MapToModeler(data map[string]string) Modeler {
     return newModel.Interface().(Modeler)
 }
 
+// Map 将model转换为map
+func (mm *ModelManager) Map(obj Modeler) map[string]interface{} {
+    if !mm.MatchObject(obj) {
+        return nil
+    }
+    retData := make(map[string]interface{})
+    fields := mm.Fields
+    rv := reflect.ValueOf(obj)
+    for _, field := range fields {
+        propName := mm.FieldMaps[field]
+        val := rv.Elem().FieldByName(propName).Interface()
+        retData[field] = val
+    }
+    // 返回结果
+    return retData
+}
+
 // FindPage 分页查询
 func (mm *ModelManager) FindPage(conds interface{}, orderBy string, page, pageSize int) (*QueryResult, error) {
     return mm.NewQuerier().From(mm.GetTableName()).Where(conds).OrderBy(orderBy).QueryPage(page, pageSize)
