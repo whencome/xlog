@@ -14,12 +14,21 @@ type Commander struct{
 }
 
 // NewCommander 创建一个新的执行者对象
-func NewCommander() *Commander {
+func NewCommander(opts *Options) *Commander {
+	if opts == nil {
+		opts = NewDefaultOptions()
+	}
 	return &Commander{
 		inTrans:false,
-		Settings:NewDefaultOptions(),
+		Settings:opts,
 		conn:nil,
 	}
+}
+
+// SetOptions 设置选项参数
+func (c *Commander) SetOptions(opts *Options) *Commander {
+	c.Settings = opts
+	return c
 }
 
 // Connect 设置数据库连接

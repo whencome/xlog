@@ -22,15 +22,19 @@ type Modeler interface {
     GetTableName() 	string
     AutoIncrementField() string
     GetDBFieldTag() string
-    GetConnection() (*sql.DB, error)
 }
 
 /************************************************************
  ******            SECTION OF MODEL MANAGER             *****
  ************************************************************/
 
+type Manager interface {
+    GetConnection() (*sql.DB, error)
+}
+
 // 定义ModelManager结构体，用于数据model操作管理
 type ModelManager struct {
+    Manager
     Model 			Modeler
     Fields          []string
     FieldMaps       map[string]string
@@ -87,6 +91,14 @@ func (mm *ModelManager) GetTableName() string {
     return mm.Model.GetTableName()
 }
 
+// GetDatabase 获取数据库名称（返回配置中的名称，不要使用实际数据库名称，因为实际数据库名称在不同环境可能不一样）
+func (mm *ModelManager) GetDatabase() string {
+    if mm.Model == nil {
+        return ""
+    }
+    return mm.Model.GetDatabase()
+}
+
 // NewAndCondition 创建一个AND条件组
 func (mm *ModelManager) NewAndCondition() *Condition {
     return NewAndCondition()
@@ -107,6 +119,12 @@ func (mm *ModelManager) NewRawQuerier(querySQL string) *Querier {
     // 获取数据库连接
     conn, _ := mm.GetConnection()
     return NewRawQuerier(querySQL).SetOptions(mm.Settings).Connect(conn)
+}
+
+// NewCommander 创建一个Commander对象
+func (mm *ModelManager) NewCommander() *Commander {
+    conn, _ := mm.GetConnection()
+    return NewCommander(mm.Settings).Connect(conn)
 }
 
 // getInsertFields 获取插入的字段列表
@@ -138,11 +156,17 @@ func (mm *ModelManager) MatchObject(obj interface{}) bool {
 
 // BuildBatchInsertSql 构造批量插入语句
 func (mm *ModelManager) BuildBatchInsertSql(data interface{}) (string, error) {
+    if data == nil {
+        return "", errors.New("can not insert nil data")
+    }
     var objects []interface{} = make([]interface{}, 0)
     switch reflect.TypeOf(data).Kind() {
     case reflect.Slice, reflect.Array:
         valData := reflect.ValueOf(data)
         arrSize := valData.Len()
+        if arrSize == 0 {
+            return "", errors.New("empty params")
+        }
         for i := 0; i < arrSize; i++ {
             objects = append(objects, valData.Index(i).Interface())
         }
@@ -151,7 +175,7 @@ func (mm *ModelManager) BuildBatchInsertSql(data interface{}) (string, error) {
     }
     // 先获取字段列表
     insertFields := mm.getInsertFields()
-    insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", mm.Model.GetTableName(), strings.Join(insertFields, "`,`"))
+    insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", mm.GetTableName(), strings.Join(insertFields, "`,`"))
     insertCount := 0
     for i, object := range objects {
         if !mm.MatchObject(object) {
@@ -185,7 +209,7 @@ func (mm *ModelManager) BuildInsertSql(object interface{}) (string, error) {
     }
     // 先获取字段列表
     insertFields := mm.getInsertFields()
-    insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", mm.Model.GetTableName(), strings.Join(insertFields, "`,`"))
+    insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", mm.GetTableName(), strings.Join(insertFields, "`,`"))
     modelObj, _ := object.(Modeler)
     values := make([]string, 0)
     rv := reflect.ValueOf(modelObj)
@@ -206,7 +230,7 @@ func (mm *ModelManager) BuildUpdateSql(object interface{}) (string, error) {
     }
     // 先获取字段列表
     updateFields := mm.getInsertFields()
-    updateSQL := fmt.Sprintf("UPDATE `%s` SET ", mm.Model.GetTableName())
+    updateSQL := fmt.Sprintf("UPDATE `%s` SET ", mm.GetTableName())
     modelObj, _ := object.(Modeler)
     rv := reflect.ValueOf(modelObj)
     for i, field := range updateFields {
@@ -238,7 +262,7 @@ func (mm *ModelManager) BuildUpdateSqlByCond(params map[string]interface{}, cond
         return "", errors.New("update condition can not be empty")
     }
     // 构造更新语句
-    updateSQL := fmt.Sprintf("UPDATE `%s` SET ", mm.Model.GetTableName())
+    updateSQL := fmt.Sprintf("UPDATE `%s` SET ", mm.GetTableName())
     counter := 0
     for field, iv := range params {
         val := NewValue(iv).SQLValue()
@@ -254,7 +278,7 @@ func (mm *ModelManager) BuildUpdateSqlByCond(params map[string]interface{}, cond
 
 // BuildDeleteSql 构造删除语句
 func (mm *ModelManager) BuildDeleteSql(conds interface{}) (string, error) {
-    delSQL := fmt.Sprintf("DELETE FROM `%s` WHERE ", mm.Model.GetTableName())
+    delSQL := fmt.Sprintf("DELETE FROM `%s` WHERE ", mm.GetTableName())
     where, err := BuildCondition(conds)
     if err != nil {
         return "", err
@@ -269,14 +293,7 @@ func (mm *ModelManager) BuildDeleteSql(conds interface{}) (string, error) {
 
 // GetConnection 获取数据库连接
 func (mm *ModelManager) GetConnection() (*sql.DB, error) {
-    conn, err := mm.Model.GetConnection()
-    if err != nil {
-        return nil, err
-    }
-    if conn == nil {
-        return nil, fmt.Errorf("get db connection of %s failed", mm.Model.GetDatabase())
-    }
-    return conn, nil
+    return nil, fmt.Errorf("get db connection of %s failed", mm.GetDatabase())
 }
 
 // Insert 插入一条新数据
@@ -434,12 +451,12 @@ func (mm *ModelManager) MapToModeler(data map[string]string) Modeler {
 
 // FindPage 分页查询
 func (mm *ModelManager) FindPage(conds interface{}, orderBy string, page, pageSize int) (*QueryResult, error) {
-    return mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).QueryPage(page, pageSize)
+    return mm.NewQuerier().From(mm.GetTableName()).Where(conds).OrderBy(orderBy).QueryPage(page, pageSize)
 }
 
 // FindOne 查询单条数据
 func (mm *ModelManager) FindOne(conds interface{}, orderBy string) (Modeler, error) {
-    data, err := mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).QueryRow()
+    data, err := mm.NewQuerier().From(mm.GetTableName()).Where(conds).OrderBy(orderBy).QueryRow()
     if err != nil {
         return nil, err
     }
@@ -452,7 +469,7 @@ func (mm *ModelManager) FindOne(conds interface{}, orderBy string) (Modeler, err
 
 // FindAll 查询满足条件的全部数据
 func (mm *ModelManager) FindAll(conds interface{}, orderBy string) ([]interface{}, error) {
-    queryRs, err := mm.NewQuerier().From(mm.Model.GetTableName()).Where(conds).OrderBy(orderBy).Query()
+    queryRs, err := mm.NewQuerier().From(mm.GetTableName()).Where(conds).OrderBy(orderBy).Query()
     if err != nil {
         return nil, err
     }
@@ -469,7 +486,7 @@ func (mm *ModelManager) FindAll(conds interface{}, orderBy string) ([]interface{
 
 // FindOne 查询单条数据
 func (mm *ModelManager) Count(conds interface{}) (int, error) {
-    data, err := mm.NewQuerier().Select("COUNT(0)").From(mm.Model.GetTableName()).Where(conds).QueryScalar()
+    data, err := mm.NewQuerier().Select("COUNT(0)").From(mm.GetTableName()).Where(conds).QueryScalar()
     if err != nil {
         return 0, err
     }
