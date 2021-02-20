@@ -282,7 +282,7 @@ func (mm *ModelManager) BuildUpdateSqlByCond(params map[string]interface{}, cond
         if counter > 0 {
             updateSQL += ", "
         }
-        updateSQL += fmt.Sprintf(" `%s` = '%s'", field, val)
+        updateSQL += fmt.Sprintf(" `%s` = %s", field, val)
         counter++
     }
     updateSQL += fmt.Sprintf(" WHERE %s ", where)
