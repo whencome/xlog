@@ -37,6 +37,9 @@ func Logln(level string, v ...interface{}) {
 		return
 	}
 	stdLogger.Output(3, level, fmt.Sprintln(v...))
+	if logStack && numLevel >= logStackLevel {
+		stdLogger.Output(3, level, string(debug.Stack()))
+	}
 }
 
 func Debug(v ...interface{}) {
