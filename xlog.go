@@ -73,6 +73,11 @@ var logLevel = LevelWarn
 // 日志格式标签
 var logFlags = LstdFlags
 
+// 设置记录调用栈的开关
+// 默认在error以及以上的级别记录调用栈，如果需要关闭调用栈，调用DisableLogStack()方法
+var logStack = true
+var logStackLevel = LevelError
+
 // 日志对象
 var stdLogger *StdLogger = NewStdLogger()
 
@@ -136,6 +141,16 @@ func SetLogRotateType(t int) {
 		t = RotateByDate
 	}
 	logRotateType = t
+}
+
+// DisableLogStack 禁止记录调用栈信息
+func DisableLogStack() {
+	logStack = false
+}
+
+// EnableLogStack 开启记录调用栈信息
+func EnableLogStack() {
+	logStack = true
 }
 
 // InitLogger 初始化logger
