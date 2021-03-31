@@ -578,3 +578,15 @@ func (q *Querier) QueryScalar() (string, error) {
     v, _ := queryResult.Rows[0][firstField]
     return v, nil
 }
+
+// QueryAll 查询全部记录
+func (q *Querier) QueryAll() ([]map[string]string, error) {
+    queryResult, err := q.Query()
+    if err != nil {
+        return nil, err
+    }
+    if queryResult.RowsCount == 0 {
+        return nil, nil
+    }
+    return queryResult.Rows, nil
+}
