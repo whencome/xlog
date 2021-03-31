@@ -67,7 +67,8 @@ func (m *ShardingModelManager) GetDatabase() string {
 // NewQuerier 创建一个查询对象
 func (m *ShardingModelManager) NewQuerier() *Querier {
 	conn, _ := m.GetConnection()
-	return NewModelQuerier(m.Model).Connect(conn).SetOptions(m.Settings)
+	queryFields := m.getQueryFields()
+	return NewModelQuerier(m.Model).Connect(conn).SetOptions(m.Settings).Select(strings.Join(queryFields, ","))
 }
 
 // NewRawQuerier 创建一个查询对象
@@ -107,15 +108,15 @@ func (m *ShardingModelManager) BuildBatchInsertSql(data interface{}) (string, er
 	insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", m.GetTableName(), strings.Join(insertFields, "`,`"))
 	insertCount := 0
 	for i, object := range objects {
-		if !m.MatchObject(object) {
+		modelObj, ok := m.convert2Model(object)
+		if !ok {
 			continue
 		}
-		modelObj, _ := object.(Modeler)
 		values := make([]string, 0)
 		rv := reflect.ValueOf(modelObj)
 		for _, field := range insertFields {
 			propName := m.FieldMaps[field]
-			val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+			val := m.GetSqlValue(field, rv.Elem().FieldByName(propName).Interface())
 			values = append(values, val)
 		}
 		if i > 0 {
@@ -132,19 +133,19 @@ func (m *ShardingModelManager) BuildBatchInsertSql(data interface{}) (string, er
 
 // BuildInsertSql 构造单条插入语句
 func (m *ShardingModelManager) BuildInsertSql(object interface{}) (string, error) {
-	// 类型检查
-	if !m.MatchObject(object) {
+	// 类型检查与转换
+	modelObj, ok := m.convert2Model(object)
+	if !ok {
 		return "", fmt.Errorf("insert action expect a %T object, but %T found", m.Model, object)
 	}
 	// 先获取字段列表
 	insertFields := m.getInsertFields()
 	insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", m.GetTableName(), strings.Join(insertFields, "`,`"))
-	modelObj, _ := object.(Modeler)
 	values := make([]string, 0)
 	rv := reflect.ValueOf(modelObj)
 	for _, field := range insertFields {
 		propName := m.FieldMaps[field]
-		val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+		val := m.GetSqlValue(field, rv.Elem().FieldByName(propName).Interface())
 		values = append(values, val)
 	}
 	insertSql += fmt.Sprintf("(%s)", strings.Join(values, ","))
@@ -153,18 +154,19 @@ func (m *ShardingModelManager) BuildInsertSql(object interface{}) (string, error
 
 // BuildUpdateSql 构造更新语句
 func (m *ShardingModelManager) BuildUpdateSql(object interface{}) (string, error) {
-	// 类型检查
-	if !m.MatchObject(object) {
-		return "", fmt.Errorf("update action expect a %T object, but %T found", m.Model, object)
+	// 类型检查与转换
+	modelObj, ok := m.convert2Model(object)
+	if !ok {
+		return "", fmt.Errorf("insert action expect a %T object, but %T found", m.Model, object)
 	}
 	// 先获取字段列表
 	updateFields := m.getInsertFields()
 	updateSQL := fmt.Sprintf("UPDATE `%s` SET ", m.GetTableName())
-	modelObj, _ := object.(Modeler)
+	// 构造更新数据
 	rv := reflect.ValueOf(modelObj)
 	for i, field := range updateFields {
 		propName := m.FieldMaps[field]
-		val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+		val := m.GetSqlValue(field, rv.Elem().FieldByName(propName).Interface())
 		if i > 0 {
 			updateSQL += ", "
 		}
@@ -173,7 +175,7 @@ func (m *ShardingModelManager) BuildUpdateSql(object interface{}) (string, error
 	// 自增ID
 	autoIncrementField := m.Model.AutoIncrementField()
 	propName := m.FieldMaps[autoIncrementField]
-	idVal := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+	idVal := m.GetSqlValue(autoIncrementField, rv.Elem().FieldByName(propName).Interface())
 	updateSQL += fmt.Sprintf(" WHERE `%s` = %s ", autoIncrementField, idVal)
 	return updateSQL, nil
 }
@@ -194,7 +196,8 @@ func (m *ShardingModelManager) BuildUpdateSqlByCond(params map[string]interface{
 	updateSQL := fmt.Sprintf("UPDATE `%s` SET ", m.GetTableName())
 	counter := 0
 	for field, iv := range params {
-		val := NewValue(iv).SQLValue()
+		// val := NewValue(iv).SQLValue()
+		val := m.GetSqlValue(field, iv)
 		if counter > 0 {
 			updateSQL += ", "
 		}
@@ -219,11 +222,6 @@ func (m *ShardingModelManager) BuildDeleteSql(conds interface{}) (string, error)
 	delSQL += where
 	return delSQL, nil
 }
-
-// GetConnection 获取数据库连接
-// func (m *ShardingModelManager) GetConnection() (*sql.DB, error) {
-// 	return nil, fmt.Errorf("get db connection of %s failed", m.GetDatabase())
-// }
 
 // Insert 插入一条新数据
 func (m *ShardingModelManager) Insert(obj interface{}) (int64, error) {
@@ -375,7 +373,14 @@ func (m *ShardingModelManager) MapToModeler(data map[string]string) Modeler {
 		}
 	}
 	// 返回结果
-	return newModel.Interface().(Modeler)
+	// return newModel.Interface().(Modeler)
+	// 读取后的数据处理
+	mod := newModel.Interface().(Modeler)
+	if m.postReadFunc != nil {
+		mod = m.postReadFunc(mod, data)
+	}
+	// 返回结果
+	return mod
 }
 
 // FindPage 分页查询

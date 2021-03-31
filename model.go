@@ -27,7 +27,22 @@ type Modeler interface {
 /************************************************************
  ******            SECTION OF MODEL MANAGER             *****
  ************************************************************/
+// 定义Modeler调整方法
+type PreWriteAdjustFunc func(Modeler) Modeler
+type PostReadAdjustFunc func(Modeler, map[string]string) Modeler
 
+// 定义一个sql值调整方法，用于获取数据写入数据库的值
+type SqlValueAdjustFunc func(interface{}) string
+
+// 定义字段调整方法
+type QueryFieldAdjustFunc func(string) string
+
+// 定义默认的SQL Value调整方法
+func DefaultSqlValueCallback(v interface{}) string {
+    return NewValue(v).SQLValue()
+}
+
+// Manager基类
 type Manager interface {
     SetDBInitFunc(func()(*sql.DB, error))
     GetConnection() (*sql.DB, error)
@@ -36,11 +51,15 @@ type Manager interface {
 // 定义ModelManager结构体，用于数据model操作管理
 type ModelManager struct {
     Manager
-    Model 			Modeler
-    Fields          []string
-    FieldMaps       map[string]string
-    Settings        *Options
-    GetDBFunc       func()(*sql.DB, error)
+    Model 			    Modeler
+    Fields              []string
+    FieldMaps           map[string]string
+    Settings            *Options
+    GetDBFunc           func()(*sql.DB, error)
+    preWriteFunc        PreWriteAdjustFunc
+    postReadFunc        PostReadAdjustFunc
+    preQueryFieldFunc   QueryFieldAdjustFunc
+    sqlValueCallbacks   map[string]SqlValueAdjustFunc
 }
 
 // NewModelManager 创建一个新的ModelManager
@@ -66,6 +85,7 @@ func NewModelManager(m Modeler) *ModelManager {
         Fields:    fields,
         FieldMaps: fieldMaps,
         Settings: NewDefaultOptions(),
+        sqlValueCallbacks:make(map[string]SqlValueAdjustFunc, 0),
     }
 }
 
@@ -83,7 +103,6 @@ func (mm *ModelManager) SetOptions(opts *Options) {
     }
     mm.Settings = opts
 }
-
 
 // GetTableName 获取Model对应的数据表名
 func (mm *ModelManager) GetTableName() string {
@@ -124,7 +143,8 @@ func (mm *ModelManager) NewOrCondition() *Condition {
 // NewQuerier 创建一个查询对象
 func (mm *ModelManager) NewQuerier() *Querier {
     conn, _ := mm.GetConnection()
-    return NewModelQuerier(mm.Model).Connect(conn).SetOptions(mm.Settings)
+    queryFields := mm.getQueryFields()
+    return NewModelQuerier(mm.Model).Connect(conn).SetOptions(mm.Settings).Select(strings.Join(queryFields, ","))
 }
 
 // NewRawQuerier 创建一个查询对象
@@ -152,6 +172,19 @@ func (mm *ModelManager) getInsertFields() []string {
     return fields
 }
 
+// getQueryFields 获取查询的字段列表
+func (mm *ModelManager) getQueryFields() []string {
+    fields := make([]string, 0)
+    for _, field := range mm.Fields {
+        if mm.preQueryFieldFunc == nil {
+            fields = append(fields, field)
+        } else {
+            fields = append(fields, mm.preQueryFieldFunc(field))
+        }
+    }
+    return fields
+}
+
 // MatchObject 匹配对象，检查对象类型是否匹配
 func (mm *ModelManager) MatchObject(obj interface{}) bool {
     if obj == nil {
@@ -165,6 +198,55 @@ func (mm *ModelManager) MatchObject(obj interface{}) bool {
         return false
     }
     return true
+}
+
+// SetPreQueryFieldFunc 设置查询前的字段调整方法
+func (mm *ModelManager) SetPreQueryFieldFunc(f QueryFieldAdjustFunc) {
+    mm.preQueryFieldFunc = f
+}
+
+// SetPreWriteFunc 设置写入前的modeler调整方法
+func (mm *ModelManager) SetPreWriteFunc(f PreWriteAdjustFunc) {
+    mm.preWriteFunc = f
+}
+
+// SetPostReadFunc 设置读取后的MODELER的调整方法
+func (mm *ModelManager) SetPostReadFunc(f PostReadAdjustFunc) {
+    mm.postReadFunc = f
+}
+
+// SetValueCallback 设置获取字段值的回调方法
+func (mm *ModelManager) SetSqlValueCallback(f string, callback SqlValueAdjustFunc) {
+    mm.sqlValueCallbacks[f] = callback
+}
+
+// GetValueCallback 获取字段值格式化方法
+func (mm *ModelManager) GetSqlValueCallback(f string) SqlValueAdjustFunc {
+    if c, ok := mm.sqlValueCallbacks[f]; ok && c != nil {
+        return c
+    }
+    return DefaultSqlValueCallback
+}
+
+// 获取字段的值
+func (mm *ModelManager) GetSqlValue(f string, v interface{}) string {
+    vf := mm.GetSqlValueCallback(f)
+    return vf(v)
+}
+
+// 将任何满足条件的对象转换为Modeler
+func (mm *ModelManager) convert2Model(obj interface{}) (Modeler, bool) {
+    if !mm.MatchObject(obj) {
+        return nil, false
+    }
+    modelObj, ok := obj.(Modeler)
+    if !ok {
+        return nil, false
+    }
+    if mm.preWriteFunc != nil {
+        modelObj = mm.preWriteFunc(modelObj)
+    }
+    return modelObj, true
 }
 
 // BuildBatchInsertSql 构造批量插入语句
@@ -191,15 +273,15 @@ func (mm *ModelManager) BuildBatchInsertSql(data interface{}) (string, error) {
     insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", mm.GetTableName(), strings.Join(insertFields, "`,`"))
     insertCount := 0
     for i, object := range objects {
-        if !mm.MatchObject(object) {
+        modelObj, ok := mm.convert2Model(object)
+        if !ok {
             continue
         }
-        modelObj, _ := object.(Modeler)
         values := make([]string, 0)
         rv := reflect.ValueOf(modelObj)
         for _, field := range insertFields {
             propName := mm.FieldMaps[field]
-            val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+            val := mm.GetSqlValue(field, rv.Elem().FieldByName(propName).Interface())
             values = append(values, val)
         }
         if i > 0 {
@@ -216,19 +298,20 @@ func (mm *ModelManager) BuildBatchInsertSql(data interface{}) (string, error) {
 
 // BuildInsertSql 构造单条插入语句
 func (mm *ModelManager) BuildInsertSql(object interface{}) (string, error) {
-    // 类型检查
-    if !mm.MatchObject(object) {
+    // 类型检查与转换
+    modelObj, ok := mm.convert2Model(object)
+    if !ok {
         return "", fmt.Errorf("insert action expect a %T object, but %T found", mm.Model, object)
     }
     // 先获取字段列表
     insertFields := mm.getInsertFields()
     insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", mm.GetTableName(), strings.Join(insertFields, "`,`"))
-    modelObj, _ := object.(Modeler)
+    // 构造插入数据
     values := make([]string, 0)
     rv := reflect.ValueOf(modelObj)
     for _, field := range insertFields {
         propName := mm.FieldMaps[field]
-        val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+        val := mm.GetSqlValue(field, rv.Elem().FieldByName(propName).Interface())
         values = append(values, val)
     }
     insertSql += fmt.Sprintf("(%s)", strings.Join(values, ","))
@@ -237,18 +320,19 @@ func (mm *ModelManager) BuildInsertSql(object interface{}) (string, error) {
 
 // BuildUpdateSql 构造更新语句
 func (mm *ModelManager) BuildUpdateSql(object interface{}) (string, error) {
-    // 类型检查
-    if !mm.MatchObject(object) {
-        return "", fmt.Errorf("update action expect a %T object, but %T found", mm.Model, object)
+    // 类型检查与转换
+    modelObj, ok := mm.convert2Model(object)
+    if !ok {
+        return "", fmt.Errorf("insert action expect a %T object, but %T found", mm.Model, object)
     }
     // 先获取字段列表
     updateFields := mm.getInsertFields()
     updateSQL := fmt.Sprintf("UPDATE `%s` SET ", mm.GetTableName())
-    modelObj, _ := object.(Modeler)
+    // 构造更新数据
     rv := reflect.ValueOf(modelObj)
     for i, field := range updateFields {
         propName := mm.FieldMaps[field]
-        val := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+        val := mm.GetSqlValue(field, rv.Elem().FieldByName(propName).Interface())
         if i > 0 {
             updateSQL += ", "
         }
@@ -257,7 +341,7 @@ func (mm *ModelManager) BuildUpdateSql(object interface{}) (string, error) {
     // 自增ID
     autoIncrementField := mm.Model.AutoIncrementField()
     propName := mm.FieldMaps[autoIncrementField]
-    idVal := NewValue(rv.Elem().FieldByName(propName).Interface()).SQLValue()
+    idVal := mm.GetSqlValue(autoIncrementField, rv.Elem().FieldByName(propName).Interface())
     updateSQL += fmt.Sprintf(" WHERE `%s` = %s ", autoIncrementField, idVal)
     return updateSQL, nil
 }
@@ -278,7 +362,8 @@ func (mm *ModelManager) BuildUpdateSqlByCond(params map[string]interface{}, cond
     updateSQL := fmt.Sprintf("UPDATE `%s` SET ", mm.GetTableName())
     counter := 0
     for field, iv := range params {
-        val := NewValue(iv).SQLValue()
+        // val := NewValue(iv).SQLValue()
+        val := mm.GetSqlValue(field, iv)
         if counter > 0 {
             updateSQL += ", "
         }
@@ -453,8 +538,13 @@ func (mm *ModelManager) MapToModeler(data map[string]string) Modeler {
             break
         }
     }
+    // 读取后的数据处理
+    m := newModel.Interface().(Modeler)
+    if mm.postReadFunc != nil {
+        m = mm.postReadFunc(m, data)
+    }
     // 返回结果
-    return newModel.Interface().(Modeler)
+    return m
 }
 
 // Map 将model转换为map
