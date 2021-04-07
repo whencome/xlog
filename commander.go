@@ -77,6 +77,23 @@ func (c *Commander) Execute(command string, args ...interface{}) (sql.Result, er
 	return c.conn.Exec(command, args...)
 }
 
+// ExecuteTx 执行事务
+func (c *Commander) ExecuteTx(f func(commander *Commander) error) error {
+	e := c.BeginTransaction()
+	if e != nil {
+		return e
+	}
+	e = f(c)
+	if e == nil {
+		e = c.Commit()
+		if e == nil {
+			return nil
+		}
+	}
+	// error occurs
+	return c.Rollback()
+}
+
 // RawQuery 执行原始的查询
 func (c *Commander) RawQuery(command string, args ...interface{}) (*sql.Rows, error) {
 	if c.inTrans {
