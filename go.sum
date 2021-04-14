@@ -1,0 +1,12 @@
+github.com/axgle/mahonia v0.0.0-20180208002826-3358181d7394 h1:OYA+5W64v3OgClL+IrOD63t4i/RW7RqrAVl9LTZ9UqQ=
+github.com/axgle/mahonia v0.0.0-20180208002826-3358181d7394/go.mod h1:Q8n74mJTIgjX4RBBcHnJ05h//6/k6foqmgE45jTQtxg=
+github.com/clearblade/sqlparser v0.0.0-20201030204415-61c0231a783c h1:eS0etck3DX8A/91lUgjc54w5tLENIFH0wvXa+uVJzGQ=
+github.com/clearblade/sqlparser v0.0.0-20201030204415-61c0231a783c/go.mod h1:ig6RS5iKdKyIzCs+svZOUSCd4I1CQY0xKdrr1j8yPF0=
+github.com/clearblade/sqlparser v0.0.0-20201204124046-79d3071bb70f h1:tPxo7JNevC5C75qaBaZ9IccdotXL0ZAlsWTYgGLINFE=
+github.com/clearblade/sqlparser v0.0.0-20201204124046-79d3071bb70f/go.mod h1:zSYURwKMwH/sHCT08me7UqVO7augrmoljWbTjHqzcrM=
+github.com/go-sql-driver/mysql v1.5.0 h1:ozyZYNQW3x3HtqT1jira07DN2PArx2v7/mN66gGcHOs=
+github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
+github.com/whencome/sqlparser v0.0.0-20201124134240-8655a1792dc5 h1:AHEOv+pQRowrB2BZ5Scv0FRTXbe2a9K6F8VTw84ON3w=
+github.com/whencome/sqlparser v0.0.0-20201124134240-8655a1792dc5/go.mod h1:29O/lJbCHnCtDFCKggvoR5MerVNT/OLLOznlnXy1Wjw=
+github.com/whencome/xlog v1.0.4 h1:x/PJaqz6l7D04PwxPRVu9dQ6co1GosfsE1jQ7zJGpdI=
+github.com/whencome/xlog v1.0.4/go.mod h1:bllVQ3079gGaPVWzpdauVeqfAIpvEM1foJeLguSKJ+Y=

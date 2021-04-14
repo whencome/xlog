@@ -14,7 +14,7 @@ func quote(field string) string {
 		return fmt.Sprintf("`%s`", field)
 	}
 	fieldParts := strings.Split(field, ".")
-	return fmt.Sprintf("`%s`", strings.Join(fieldParts, "`,`"))
+	return fmt.Sprintf("`%s`", strings.Join(fieldParts, "`.`"))
 }
 
 // transValue2Array 将值转换成数组
