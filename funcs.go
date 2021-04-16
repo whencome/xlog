@@ -1,20 +1,42 @@
 package gomodel
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
 
 // quote 对字段进行处理
 func quote(field string) string {
-	if strings.Contains(field, "`") {
+	field = strings.TrimSpace(field)
+	// 自带反引号或者内置方法调用，不需要quote操作
+	if strings.Contains(field, "`") || strings.Contains(field, "(") {
 		return field
 	}
-	if !strings.Contains(field, ".") {
-		return fmt.Sprintf("`%s`", field)
+	// a.b格式
+	if strings.Contains(field, ".") {
+		fieldParts := strings.Split(field, ".")
+		return fmt.Sprintf("`%s`", strings.Join(fieldParts, "`.`"))
 	}
-	fieldParts := strings.Split(field, ".")
-	return fmt.Sprintf("`%s`", strings.Join(fieldParts, "`.`"))
+	// 检查是否包含别名
+	if strings.Contains(field, " ") {
+		fieldParts := strings.Split(field, " ")
+		size := len(fieldParts)
+		if size == 1 {
+			return fmt.Sprintf("`%s`", fieldParts[0])
+		}
+		var quoteRs bytes.Buffer
+		for i := 0; i < size; i++ {
+			if i == 0 || i == size - 1 {
+				quoteRs.WriteString(fmt.Sprintf("`%s` ", fieldParts[i]))
+			} else {
+				quoteRs.WriteString(fieldParts[i])
+				quoteRs.WriteString(" ")
+			}
+		}
+	}
+	// 普通字段/表名
+	return fmt.Sprintf("`%s`", field)
 }
 
 // transValue2Array 将值转换成数组
