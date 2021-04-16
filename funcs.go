@@ -16,6 +16,13 @@ func quote(field string) string {
 	// a.b格式
 	if strings.Contains(field, ".") {
 		fieldParts := strings.Split(field, ".")
+		size := len(fieldParts)
+		if size == 1 {
+			return fmt.Sprintf("`%s`", fieldParts[0])
+		}
+		if fieldParts[size-1] == "*" {
+			return fmt.Sprintf("`%s`", strings.Join(fieldParts[:size-1], "`.`")) + ".*"
+		}
 		return fmt.Sprintf("`%s`", strings.Join(fieldParts, "`.`"))
 	}
 	// 检查是否包含别名
@@ -34,6 +41,7 @@ func quote(field string) string {
 				quoteRs.WriteString(" ")
 			}
 		}
+		return quoteRs.String()
 	}
 	// 普通字段/表名
 	return fmt.Sprintf("`%s`", field)
