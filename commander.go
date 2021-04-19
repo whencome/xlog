@@ -166,6 +166,9 @@ func (c *Commander) QueryRow(command string, args ...interface{}) (map[string]st
 	}
 	// 开始读取数据
 	data := make(map[string]string)
+	if !rows.Next() {
+		return nil, nil
+	}
 	err = rows.Scan(row...)
 	if err != nil {
 		return nil, err
@@ -201,6 +204,9 @@ func (c *Commander) QueryScalar(command string, args ...interface{}) (string, er
 	}
 	// 开始读取数据
 	data := make(map[string]string)
+	if !rows.Next() {
+		return "", nil
+	}
 	err = rows.Scan(row...)
 	if err != nil {
 		return "", err
