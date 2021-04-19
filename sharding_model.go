@@ -67,8 +67,7 @@ func (m *ShardingModelManager) GetDatabase() string {
 // NewQuerier 创建一个查询对象
 func (m *ShardingModelManager) NewQuerier() *Querier {
 	conn, _ := m.GetConnection()
-	queryFields := m.getQueryFields()
-	return NewModelQuerier(m.Model).Connect(conn).SetOptions(m.Settings).Select(strings.Join(queryFields, ","))
+	return NewModelQuerier(m.Model).Connect(conn).SetOptions(m.Settings).Select(m.QueryFieldsString())
 }
 
 // NewRawQuerier 创建一个查询对象

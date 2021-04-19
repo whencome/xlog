@@ -143,8 +143,7 @@ func (mm *ModelManager) NewOrCondition() *Condition {
 // NewQuerier 创建一个查询对象
 func (mm *ModelManager) NewQuerier() *Querier {
     conn, _ := mm.GetConnection()
-    queryFields := mm.getQueryFields()
-    return NewModelQuerier(mm.Model).Connect(conn).SetOptions(mm.Settings).Select(strings.Join(queryFields, ","))
+    return NewModelQuerier(mm.Model).Connect(conn).SetOptions(mm.Settings).Select(mm.QueryFieldsString())
 }
 
 // NewRawQuerier 创建一个查询对象
@@ -183,6 +182,12 @@ func (mm *ModelManager) getQueryFields() []string {
         }
     }
     return fields
+}
+
+// QueryFieldsString 获取查询字段字符串
+func (mm *ModelManager) QueryFieldsString() string {
+    queryFields := mm.getQueryFields()
+    return "`" + strings.Join(queryFields, "`,`") + "`"
 }
 
 // MatchObject 匹配对象，检查对象类型是否匹配
