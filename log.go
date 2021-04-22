@@ -3,6 +3,7 @@ package xlog
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 )
 
 // Log record a specified level's log
@@ -12,6 +13,9 @@ func Log(level string, v ...interface{}) {
 		return
 	}
 	stdLogger.Output(3, level, fmt.Sprint(v...))
+	if logStack && numLevel >= logStackLevel {
+		stdLogger.Output(3, level, string(debug.Stack()))
+	}
 }
 
 // Logf record a specified level's formatted log
@@ -21,6 +25,9 @@ func Logf(level string, format string, v ...interface{}) {
 		return
 	}
 	stdLogger.Output(3, level, fmt.Sprintf(format, v...))
+	if logStack && numLevel >= logStackLevel {
+		stdLogger.Output(3, level, string(debug.Stack()))
+	}
 }
 
 // Logf record a specified level's log with a new line
@@ -30,6 +37,9 @@ func Logln(level string, v ...interface{}) {
 		return
 	}
 	stdLogger.Output(3, level, fmt.Sprintln(v...))
+	if logStack && numLevel >= logStackLevel {
+		stdLogger.Output(3, level, string(debug.Stack()))
+	}
 }
 
 func Debug(v ...interface{}) {
