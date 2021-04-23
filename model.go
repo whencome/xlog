@@ -1,6 +1,7 @@
 package gomodel
 
 import (
+    "bytes"
     "database/sql"
     "errors"
     "fmt"
@@ -187,7 +188,14 @@ func (mm *ModelManager) getQueryFields() []string {
 // QueryFieldsString 获取查询字段字符串
 func (mm *ModelManager) QueryFieldsString() string {
     queryFields := mm.getQueryFields()
-    return "`" + strings.Join(queryFields, "`,`") + "`"
+    quoted := bytes.Buffer{}
+    for i, f := range queryFields {
+        if i > 0 {
+            quoted.WriteString(",")
+        }
+        quoted.WriteString(quote(f))
+    }
+    return quoted.String()
 }
 
 // MatchObject 匹配对象，检查对象类型是否匹配
