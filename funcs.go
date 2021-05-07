@@ -18,7 +18,7 @@ func getLogRotateTimeFmt() string {
 	case RotateByDate:
 		timeFmt = "20060102"
 	case RotateByHour:
-		timeFmt = "2006010203"
+		timeFmt = "2006010215"
 	}
 	return timeFmt
 }

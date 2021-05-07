@@ -1,45 +1,37 @@
 package xlog
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"runtime/debug"
 )
 
-// Log record a specified level's log
-func Log(level string, v ...interface{}) {
+func Write(level, data string) {
 	numLevel := numLogLevel(level)
 	if numLevel < logLevel {
 		return
 	}
-	stdLogger.Output(3, level, fmt.Sprint(v...))
+	l := Use("default")
+	l.Output(3, level, data)
 	if logStack && numLevel >= logStackLevel {
-		stdLogger.Output(3, level, string(debug.Stack()))
+		l.Output(3, level, string(debug.Stack()))
 	}
+}
+
+// Log record a specified level's log
+func Log(level string, v ...interface{}) {
+	Write(level, fmt.Sprint(v...))
 }
 
 // Logf record a specified level's formatted log
 func Logf(level string, format string, v ...interface{}) {
-	numLevel := numLogLevel(level)
-	if numLevel < logLevel {
-		return
-	}
-	stdLogger.Output(3, level, fmt.Sprintf(format, v...))
-	if logStack && numLevel >= logStackLevel {
-		stdLogger.Output(3, level, string(debug.Stack()))
-	}
+	Write(level, fmt.Sprintf(format, v...))
 }
 
 // Logf record a specified level's log with a new line
 func Logln(level string, v ...interface{}) {
-	numLevel := numLogLevel(level)
-	if numLevel < logLevel {
-		return
-	}
-	stdLogger.Output(3, level, fmt.Sprintln(v...))
-	if logStack && numLevel >= logStackLevel {
-		stdLogger.Output(3, level, string(debug.Stack()))
-	}
+	Write(level, fmt.Sprintln(v...))
 }
 
 func Debug(v ...interface{}) {
@@ -118,4 +110,26 @@ func Panicf(format string, v ...interface{}) {
 func Panicln(v ...interface{}) {
 	Logln(LogLevelFatal, v...)
 	panic(fmt.Sprintln(v...))
+}
+
+// Raw record origin raw log
+func Raw(v ...interface{}) {
+	Use("default").OutputRaw(fmt.Sprint(v...))
+}
+
+func Rawf(format string, v ...interface{}) {
+	Use("default").OutputRaw(fmt.Sprintf(format, v...))
+}
+
+func Rawln(v ...interface{}) {
+	Use("default").OutputRaw(fmt.Sprintln(v...))
+}
+
+func Json(v interface{}) {
+	d, e := json.Marshal(v)
+	if e != nil {
+		return
+	}
+	d = append(d, '\n')
+	Use("default").OutputRawBytes(d)
 }

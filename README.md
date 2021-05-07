@@ -1,5 +1,5 @@
 # xlog
-一个简单的日志工具，支持按自动按时间记录到不同的文件，支持按日志等级记录日志，支持自定义输出
+一个简单的日志工具，支持按自动按时间记录到不同的文件，支持按日志等级记录日志，支持自定义输出，支持同时将多个不同的日志输出到不同的地方
 
 ## 特点
 
@@ -7,10 +7,11 @@
 * （记录日志到文件）支持根据定义的时间间隔将日志输出到不同的文件，比如按小时、按日、按月、按年输出到不同的日志文件
 * 支持日志等级，分为：debug、info、warn、error、fatal，可以在代码中记录详细的日志，后期发布直接修改日志等级即可实现控制日志输出，不用修改代码
 * 部分功能直接与golang原生的log相同（直接拷贝的相关代码），比如flag
+* 2021.05.07 支持将不同的日志以不同的方式输出到不同的地方
 
 ## 使用示例
 
-### step1. 初始化日志信息（全局）
+### step1. 初始化日志信息（全局默认）
 
 ```go
 // 设置日志输出类型
@@ -30,6 +31,19 @@ xlog.SetLogDir("/home/logs/test")
 xlog.SetLogRotateType(xlog.RotateByDate)
 // 设置日志文件名前缀，仅当输出类型为 LogToFile 有效
 xlog.SetLogFilePrefix("test_")
+```
+
+也可以通过配置直接快速初始化日志对象，如：
+```go
+cfg := &xlog.Config{
+    LogPath : "/home/logs/test",
+    LogPrefix : "order_",
+    Output : "file",
+    LogLevel : "debug",
+    Rotate : "date",
+    LogStackLevel : "error", // 如果设置为none表示始终不记录stack信息
+}
+xlog.Init(cfg)
 ```
 
 ### step2. 在代码中记录日志
@@ -60,4 +74,45 @@ xlog.Fatalf("fatal log info here: %s", "test")
 xlog.Panic("panic log info here")
 xlog.Panicln("panic log info here")
 xlog.Panicf("panic log info here: %s", "test")
+```
+
+## 修改日志
+
+* 2021.05.07 支持将不同的日志输出到不同的地方，示例如下：
+```go
+cfgs := map[string]*Config{
+    "order" : &xlog.Config{
+        LogPath : "/home/logs/test",
+        LogPrefix : "order_",
+        Output : "file",
+        LogLevel : "debug",
+        Rotate : "date",
+        LogStackLevel : "error",
+    },
+    "curl" : &xlog.Config{
+        LogPath : "/home/logs/test",
+        LogPrefix : "curl_",
+        Output : "file",
+        LogLevel : "debug",
+        Rotate : "date",
+        LogStackLevel : "error",
+    },
+    "api" : &xlog.Config{
+        LogPath : "/home/logs/test",
+        LogPrefix : "api_",
+        Output : "file",
+        LogLevel : "debug",
+        Rotate : "date",
+        LogStackLevel : "error",
+    },
+}
+// 注册logger
+for k, cfg := range cfgs {
+    xlog.Register(k, cfg)
+}
+
+// 写日志
+xlog.Use("order").Info("order log content")
+xlog.Use("api").Debug("api log content")
+xlog.Use("curl").Error("curl log content")
 ```

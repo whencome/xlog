@@ -78,8 +78,8 @@ var logFlags = LstdFlags
 var logStack = true
 var logStackLevel = LevelError
 
-// 日志对象
-var stdLogger *StdLogger = NewStdLogger()
+// 默认日志对象
+var stdLogger *StdLogger = NewStdLogger(nil)
 
 // numLogLevel 获取日志等级的对应的数字
 func numLogLevel(l string) int {
@@ -153,71 +153,7 @@ func EnableLogStack() {
 	logStack = true
 }
 
-// InitLogger 初始化logger
-func InitLogger() {
-	if stdLogger == nil {
-		return
-	}
-	stdLogger.initOut()
-}
-
 // Init 初始化日志设置
 func Init(cfg *Config) {
-	// 没有配置则忽略
-	if cfg == nil {
-		return
-	}
-	// 设置日志输出类型
-	// LogToFile - 输出到文件
-	// LogToStdout - 输出到标准输出
-	// LogToStderr - 输出到标准错误输出
-	switch cfg.Output {
-	case "file":
-		SetLogOutputType(LogToFile)
-	case "stderr":
-		SetLogOutputType(LogToStderr)
-	default:
-		// 不设置默认全部输出到标准输出设备
-		SetLogOutputType(LogToStdout)
-	}
-	// 设置日志等级
-	switch cfg.LogLevel {
-	case "debug":
-		SetLogLevel(LogLevelDebug)
-	case "info":
-		SetLogLevel(LogLevelInfo)
-	case "warn":
-		SetLogLevel(LogLevelWarn)
-	case "error":
-		SetLogLevel(LogLevelError)
-	case "fatal":
-		SetLogLevel(LogLevelFatal)
-	default:
-		SetLogLevel(LogLevelError)
-	}
-	// 设置flag，此处的内容与golang中的log包的相关设置相同
-	// 此处暂不支持自定义设置，如果需要设置需要在此方法之外（前）自行设定
-	SetLogFlags(Ldate | Ltime | Lmicroseconds | Lshortfile)
-	// 设置日志文件存储目录，仅当输出类型为 LogToFile 有效
-	SetLogDir(cfg.LogPath)
-	// 设置日志文件切割类型
-	switch cfg.Rotate {
-	case "none":
-		SetLogRotateType(RotateNone)
-	case "year":
-		SetLogRotateType(RotateByYear)
-	case "month":
-		SetLogRotateType(RotateByMonth)
-	case "date":
-		SetLogRotateType(RotateByDate)
-	case "hour":
-		SetLogRotateType(RotateByHour)
-	default:
-		SetLogRotateType(RotateByDate)
-	}
-
-	// 设置日志文件名前缀，仅当输出类型为 LogToFile 有效
-	SetLogFilePrefix(cfg.LogPrefix)
-	// 重新初始化(下面的方法只在需要动态重新初始化的时候使用)
-	InitLogger()
+	Register("default", cfg)
 }
