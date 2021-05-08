@@ -8,13 +8,13 @@ import (
 )
 
 func Write(level, data string) {
+	l := Use("default")
 	numLevel := numLogLevel(level)
-	if numLevel < logLevel {
+	if numLevel < l.def.Level {
 		return
 	}
-	l := Use("default")
 	l.Output(3, level, data)
-	if logStack && numLevel >= logStackLevel {
+	if l.def.LogStack && numLevel >= l.def.LogStackLevel {
 		l.Output(3, level, string(debug.Stack()))
 	}
 }

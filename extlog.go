@@ -30,18 +30,18 @@ func Register(k string, cfg *Config) {
 func Use(k string) *StdLogger {
 	logger, ok := loggerMaps.Load(k)
 	if !ok {
-		return stdLogger
+		return defaultLogger
 	}
 	l, ok := logger.(*StdLogger)
 	if !ok {
-		return stdLogger
+		return defaultLogger
 	}
 	return l
 }
 
 func (l *StdLogger) Write(level, data string) {
 	numLevel := numLogLevel(level)
-	if numLevel < logLevel {
+	if numLevel < l.def.Level {
 		return
 	}
 	l.Output(3, level, data)

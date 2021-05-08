@@ -79,7 +79,7 @@ var logStack = true
 var logStackLevel = LevelError
 
 // 默认日志对象
-var stdLogger *StdLogger = NewStdLogger(nil)
+var defaultLogger *StdLogger = NewStdLogger(nil)
 
 // numLogLevel 获取日志等级的对应的数字
 func numLogLevel(l string) int {
