@@ -31,6 +31,7 @@ xlog.SetLogDir("/home/logs/test")
 xlog.SetLogRotateType(xlog.RotateByDate)
 // 设置日志文件名前缀，仅当输出类型为 LogToFile 有效
 xlog.SetLogFilePrefix("test_")
+xlog.Init(nil)
 ```
 
 也可以通过配置直接快速初始化日志对象，如：

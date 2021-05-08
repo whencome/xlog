@@ -73,6 +73,9 @@ var logLevel = LevelWarn
 // 日志格式标签
 var logFlags = LstdFlags
 
+// 是否开启彩色打印
+var colorfulPrint = true
+
 // 设置记录调用栈的开关
 // 默认在error以及以上的级别记录调用栈，如果需要关闭调用栈，调用DisableLogStack()方法
 var logStack = true
@@ -151,6 +154,16 @@ func DisableLogStack() {
 // EnableLogStack 开启记录调用栈信息
 func EnableLogStack() {
 	logStack = true
+}
+
+// DisableColorfulPrint 禁止彩色日志打印
+func DisableColorfulPrint() {
+	colorfulPrint = false
+}
+
+// EnableColorfulPrint 开启彩色日志打印
+func EnableColorfulPrint() {
+	colorfulPrint = true
 }
 
 // Init 初始化日志设置

@@ -14,6 +14,7 @@ type Config struct {
 	LogLevel      string `json:"log_level"`       // 日志等级，可取值:debug,info,warn,error,fatal
 	Rotate        string `json:"rotate"`          // 日志切割类型,可取值：none,year,month,date,hour
 	LogStackLevel string `json:"log_stack_level"` // 记录调用栈信息的日志等级
+	ColorfulPrint bool   `json:"colorful_print"`  // 是否开启彩色打印，仅适用于标准输出，不适用于文件输出
 }
 
 // LogDefinition 日志定义，由Config转换后得到
@@ -27,6 +28,7 @@ type LogDefinition struct {
 	Flags         int      // 日志格式标签
 	LogStack      bool     // 是否记录日志调用栈信息
 	LogStackLevel int      // 记录调用栈的日志等级
+	ColorfulPrint bool     // 是否开启彩色打印，仅适用于标准输出，不适用于文件输出
 }
 
 // 返回一个默认的日志定义
@@ -41,6 +43,7 @@ func defaultLogDefinition() *LogDefinition {
 	def.RotateType = logRotateType
 	def.LogStack = logStack
 	def.LogStackLevel = logStackLevel
+	def.ColorfulPrint = colorfulPrint
 	return def
 }
 
@@ -110,6 +113,10 @@ func newLogDefinition(cfg *Config) *LogDefinition {
 		def.LogStack = true
 		def.LogStackLevel = numLogLevel(cfg.LogStackLevel)
 	}
+
+	// 日志打印
+	def.ColorfulPrint = cfg.ColorfulPrint
+
 	return def
 }
 

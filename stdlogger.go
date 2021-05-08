@@ -103,10 +103,30 @@ func (l *StdLogger) Output(calldepth int, level, s string) error {
 		l.mu.Lock()
 	}
 	l.buf = l.buf[:0]
+	// colorful print begin
+	if l.def.ColorfulPrint && l.def.OutputType != LogToFile {
+		switch level {
+		case LogLevelInfo:
+			l.buf = append(l.buf, "\x1b[34m"...)
+		case LogLevelWarn:
+			l.buf = append(l.buf, "\x1b[33m"...)
+		case LogLevelError:
+			l.buf = append(l.buf, "\x1b[31m"...)
+		case LogLevelFatal:
+			l.buf = append(l.buf, "\x1b[35m"...)
+		}
+
+	}
+	// log prefix
 	formatLogPrefix(&l.buf, now, level, file, line)
+	// log content
 	l.buf = append(l.buf, s...)
 	if len(s) == 0 || s[len(s)-1] != '\n' {
 		l.buf = append(l.buf, '\n')
+	}
+	// colorful print end
+	if l.def.ColorfulPrint && l.def.OutputType != LogToFile {
+		l.buf = append(l.buf, "\x1b[0m"...)
 	}
 	// 输出到文件
 	return l.flush()

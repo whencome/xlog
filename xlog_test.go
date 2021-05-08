@@ -19,6 +19,8 @@ func TestLog(t *testing.T) {
 	// 注意此处的包是xlog，不是log
 	SetLogFlags(Ldate | Ltime | Lmicroseconds | Llongfile)
 
+	Init(nil)
+
 	// 测试日志输出
 	Info("info log")
 	Infof("now is %s", time.Now().Format("2006-01-02 15:04:05.0000"))
