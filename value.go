@@ -67,7 +67,7 @@ func (val *Value) String() string {
         if val.Data == nil {
             strVal = ""
         } else {
-            strVal = fmt.Sprint(val.Data)
+            strVal = fmt.Sprintf("%s", val.Data)
         }
     }
     return strVal
