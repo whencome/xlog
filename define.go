@@ -8,13 +8,13 @@ import (
 
 // Config 定义日志配置
 type Config struct {
-	LogPath       string `json:"log_path"`        // 定义日志根路径
-	LogPrefix     string `json:"log_prefix"`      // 日志文件前缀
-	Output        string `json:"output"`          // 日志输出类型,file,stdout,stderr
-	LogLevel      string `json:"log_level"`       // 日志等级，可取值:debug,info,warn,error,fatal
-	Rotate        string `json:"rotate"`          // 日志切割类型,可取值：none,year,month,date,hour
-	LogStackLevel string `json:"log_stack_level"` // 记录调用栈信息的日志等级
-	ColorfulPrint bool   `json:"colorful_print"`  // 是否开启彩色打印，仅适用于标准输出，不适用于文件输出
+	LogPath       string `json:"log_path" toml:"log_path"`               // 定义日志根路径
+	LogPrefix     string `json:"log_prefix" toml:"log_prefix"`           // 日志文件前缀
+	Output        string `json:"output" toml:"output"`                   // 日志输出类型,file,stdout,stderr
+	LogLevel      string `json:"log_level" toml:"log_level"`             // 日志等级，可取值:debug,info,warn,error,fatal
+	Rotate        string `json:"rotate" toml:"rotate"`                   // 日志切割类型,可取值：none,year,month,date,hour
+	LogStackLevel string `json:"log_stack_level" toml:"log_stack_level"` // 记录调用栈信息的日志等级
+	ColorfulPrint bool   `json:"colorful_print" toml:"colorful_print"`   // 是否开启彩色打印，仅适用于标准输出，不适用于文件输出
 }
 
 // LogDefinition 日志定义，由Config转换后得到
