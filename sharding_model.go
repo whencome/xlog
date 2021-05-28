@@ -66,20 +66,32 @@ func (m *ShardingModelManager) GetDatabase() string {
 
 // NewQuerier 创建一个查询对象
 func (m *ShardingModelManager) NewQuerier() *Querier {
-	conn, _ := m.GetConnection()
+	conn, err := m.GetConnection()
+	if err != nil {
+		xlog.Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
+		conn = nil
+	}
 	return NewModelQuerier(m.Model).Connect(conn).SetOptions(m.Settings).Select(m.QueryFieldsString())
 }
 
 // NewRawQuerier 创建一个查询对象
 func (m *ShardingModelManager) NewRawQuerier(querySQL string) *Querier {
 	// 获取数据库连接
-	conn, _ := m.GetConnection()
+	conn, err := m.GetConnection()
+	if err != nil {
+		xlog.Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
+		conn = nil
+	}
 	return NewRawQuerier(querySQL).SetOptions(m.Settings).Connect(conn)
 }
 
 // NewCommander 创建一个Commander对象
 func (m *ShardingModelManager) NewCommander() *Commander {
-	conn, _ := m.GetConnection()
+	conn, err := m.GetConnection()
+	if err != nil {
+		xlog.Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
+		conn = nil
+	}
 	return NewCommander(m.Settings).Connect(conn)
 }
 

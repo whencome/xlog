@@ -128,6 +128,9 @@ func (mm *ModelManager) SetDBInitFunc(f func()(*sql.DB, error)) {
 
 // GetConnection 获取数据库连接
 func (mm *ModelManager) GetConnection() (*sql.DB, error) {
+    if mm.GetDBFunc == nil {
+        xlog.Errorf("[%s.%s] mm.GetDBFunc is nil", mm.GetDatabase(), mm.GetTableName())
+    }
     return mm.GetDBFunc()
 }
 
@@ -143,20 +146,32 @@ func (mm *ModelManager) NewOrCondition() *Condition {
 
 // NewQuerier 创建一个查询对象
 func (mm *ModelManager) NewQuerier() *Querier {
-    conn, _ := mm.GetConnection()
+    conn, err := mm.GetConnection()
+    if err != nil {
+        xlog.Errorf("get db [%s] connection failed: %s", mm.GetDatabase(), err)
+        conn = nil
+    }
     return NewModelQuerier(mm.Model).Connect(conn).SetOptions(mm.Settings).Select(mm.QueryFieldsString())
 }
 
 // NewRawQuerier 创建一个查询对象
 func (mm *ModelManager) NewRawQuerier(querySQL string) *Querier {
     // 获取数据库连接
-    conn, _ := mm.GetConnection()
+    conn, err := mm.GetConnection()
+    if err != nil {
+        xlog.Errorf("get db [%s] connection failed: %s", mm.GetDatabase(), err)
+        conn = nil
+    }
     return NewRawQuerier(querySQL).SetOptions(mm.Settings).Connect(conn)
 }
 
 // NewCommander 创建一个Commander对象
 func (mm *ModelManager) NewCommander() *Commander {
-    conn, _ := mm.GetConnection()
+    conn, err := mm.GetConnection()
+    if err != nil {
+        xlog.Errorf("get db [%s] connection failed: %s", mm.GetDatabase(), err)
+        conn = nil
+    }
     return NewCommander(mm.Settings).Connect(conn)
 }
 
