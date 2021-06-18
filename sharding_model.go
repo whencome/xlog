@@ -163,6 +163,59 @@ func (m *ShardingModelManager) BuildInsertSql(object interface{}) (string, error
 	return insertSql, nil
 }
 
+// BuildReplaceIntoSql 构造REPLACE INTO语句
+func (mm *ShardingModelManager) BuildReplaceIntoSql(data interface{}) (string, error) {
+	if data == nil {
+		return "", errors.New("can not replace into nil data")
+	}
+	var objects []interface{} = make([]interface{}, 0)
+	ele := reflect.TypeOf(data)
+	if ele.Kind() == reflect.Ptr {
+		ele = ele.Elem()
+	}
+	switch ele.Kind() {
+	case reflect.Slice, reflect.Array:
+		valData := reflect.ValueOf(data)
+		arrSize := valData.Len()
+		if arrSize == 0 {
+			return "", errors.New("empty params")
+		}
+		for i := 0; i < arrSize; i++ {
+			objects = append(objects, valData.Index(i).Interface())
+		}
+	case reflect.Struct:
+		objects = append(objects, data)
+	default:
+		return "", errors.New("invalid params")
+	}
+	// 先获取字段列表
+	allFields := mm.Fields
+	replaceSql := fmt.Sprintf("REPLACE INTO %s(`%s`) VALUES", quote(mm.GetTableName()), strings.Join(allFields, "`,`"))
+	count := 0
+	for i, object := range objects {
+		modelObj, ok := mm.convert2Model(object)
+		if !ok {
+			continue
+		}
+		values := make([]string, 0)
+		rv := reflect.ValueOf(modelObj)
+		for _, field := range allFields {
+			propName := mm.FieldMaps[field]
+			val := mm.GetSqlValue(field, rv.Elem().FieldByName(propName).Interface())
+			values = append(values, val)
+		}
+		if i > 0 {
+			replaceSql += ","
+		}
+		replaceSql += fmt.Sprintf("(%s)", strings.Join(values, ","))
+		count++
+	}
+	if count <= 0 {
+		return "", errors.New("no any qualified data to replace into")
+	}
+	return replaceSql, nil
+}
+
 // BuildUpdateSql 构造更新语句
 func (m *ShardingModelManager) BuildUpdateSql(object interface{}) (string, error) {
 	// 类型检查与转换
@@ -273,6 +326,28 @@ func (m *ShardingModelManager) InsertBatch(objs interface{}) (int64, error) {
 	_, err = conn.Exec(insertSQL)
 	if err != nil {
 		xlog.Error("exec batch insert failed : ", err, ";  sql : ", insertSQL)
+		return 0, err
+	}
+	// 只返回是否成功
+	return 1, nil
+}
+
+// ReplaceInto 批量插入/更新数据
+func (mm *ShardingModelManager) ReplaceInto(objs interface{}) (int64, error) {
+	replaceSQL, err := mm.BuildReplaceIntoSql(objs)
+	xlog.Debugf("* SQL : %s", replaceSQL)
+	if err != nil {
+		return 0, err
+	}
+	// 获取数据库连接
+	conn, err := mm.GetConnection()
+	if err != nil {
+		return 0, err
+	}
+	// 执行插入操作
+	_, err = conn.Exec(replaceSQL)
+	if err != nil {
+		xlog.Error("exec failed : ", err, ";  sql : ", replaceSQL)
 		return 0, err
 	}
 	// 只返回是否成功

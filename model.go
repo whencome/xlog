@@ -298,7 +298,7 @@ func (mm *ModelManager) BuildBatchInsertSql(data interface{}) (string, error) {
     }
     // 先获取字段列表
     insertFields := mm.getInsertFields()
-    insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", mm.GetTableName(), strings.Join(insertFields, "`,`"))
+    insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", quote(mm.GetTableName()), strings.Join(insertFields, "`,`"))
     insertCount := 0
     for i, object := range objects {
         modelObj, ok := mm.convert2Model(object)
@@ -333,7 +333,7 @@ func (mm *ModelManager) BuildInsertSql(object interface{}) (string, error) {
     }
     // 先获取字段列表
     insertFields := mm.getInsertFields()
-    insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", mm.GetTableName(), strings.Join(insertFields, "`,`"))
+    insertSql := fmt.Sprintf("INSERT INTO %s(`%s`) VALUES", quote(mm.GetTableName()), strings.Join(insertFields, "`,`"))
     // 构造插入数据
     values := make([]string, 0)
     rv := reflect.ValueOf(modelObj)
@@ -344,6 +344,59 @@ func (mm *ModelManager) BuildInsertSql(object interface{}) (string, error) {
     }
     insertSql += fmt.Sprintf("(%s)", strings.Join(values, ","))
     return insertSql, nil
+}
+
+// BuildReplaceIntoSql 构造REPLACE INTO语句
+func (mm *ModelManager) BuildReplaceIntoSql(data interface{}) (string, error) {
+    if data == nil {
+        return "", errors.New("can not replace into nil data")
+    }
+    var objects []interface{} = make([]interface{}, 0)
+    ele := reflect.TypeOf(data)
+    if ele.Kind() == reflect.Ptr {
+        ele = ele.Elem()
+    }
+    switch ele.Kind() {
+    case reflect.Slice, reflect.Array:
+        valData := reflect.ValueOf(data)
+        arrSize := valData.Len()
+        if arrSize == 0 {
+            return "", errors.New("empty params")
+        }
+        for i := 0; i < arrSize; i++ {
+            objects = append(objects, valData.Index(i).Interface())
+        }
+    case reflect.Struct:
+        objects = append(objects, data)
+    default:
+        return "", errors.New("invalid params")
+    }
+    // 先获取字段列表
+    allFields := mm.Fields
+    replaceSql := fmt.Sprintf("REPLACE INTO %s(`%s`) VALUES", quote(mm.GetTableName()), strings.Join(allFields, "`,`"))
+    count := 0
+    for i, object := range objects {
+        modelObj, ok := mm.convert2Model(object)
+        if !ok {
+            continue
+        }
+        values := make([]string, 0)
+        rv := reflect.ValueOf(modelObj)
+        for _, field := range allFields {
+            propName := mm.FieldMaps[field]
+            val := mm.GetSqlValue(field, rv.Elem().FieldByName(propName).Interface())
+            values = append(values, val)
+        }
+        if i > 0 {
+            replaceSql += ","
+        }
+        replaceSql += fmt.Sprintf("(%s)", strings.Join(values, ","))
+        count++
+    }
+    if count <= 0 {
+        return "", errors.New("no any qualified data to replace into")
+    }
+    return replaceSql, nil
 }
 
 // BuildUpdateSql 构造更新语句
@@ -456,6 +509,28 @@ func (mm *ModelManager) InsertBatch(objs interface{}) (int64, error) {
     _, err = conn.Exec(insertSQL)
     if err != nil {
         xlog.Error("exec batch insert failed : ", err, ";  sql : ", insertSQL)
+        return 0, err
+    }
+    // 只返回是否成功
+    return 1, nil
+}
+
+// ReplaceInto 批量插入/更新数据
+func (mm *ModelManager) ReplaceInto(objs interface{}) (int64, error) {
+    replaceSQL, err := mm.BuildReplaceIntoSql(objs)
+    xlog.Debugf("* SQL : %s", replaceSQL)
+    if err != nil {
+        return 0, err
+    }
+    // 获取数据库连接
+    conn, err := mm.GetConnection()
+    if err != nil {
+        return 0, err
+    }
+    // 执行插入操作
+    _, err = conn.Exec(replaceSQL)
+    if err != nil {
+        xlog.Error("exec failed : ", err, ";  sql : ", replaceSQL)
         return 0, err
     }
     // 只返回是否成功
