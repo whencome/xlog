@@ -459,10 +459,10 @@ func (q *Querier) Query() (*QueryResult, error) {
 	// 构建查询
 	err := q.buildQuery()
 	if err != nil {
-		xlog.Errorf("[querier] build query failed: %s", err)
+		xlog.Use("db").Errorf("[querier] build query failed: %s", err)
 		return nil, err
 	}
-	xlog.Debugf("[querier] Query : %s", q.QuerySQL)
+	xlog.Use("db").Debugf("[querier] Query : %s", q.QuerySQL)
 	// 执行查询前的检查
 	err = q.doPreQueryCheck()
 	if err != nil {
@@ -518,7 +518,7 @@ func (q *Querier) queryTotalCount() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	xlog.Debugf("querier queryTotalCount : %s", countQuery)
+	xlog.Use("db").Debugf("querier queryTotalCount : %s", countQuery)
 	// 执行查询前的检查
 	err = q.doPreQueryCheck()
 	if err != nil {

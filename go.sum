@@ -10,3 +10,4 @@ github.com/whencome/sqlparser v0.0.0-20201124134240-8655a1792dc5 h1:AHEOv+pQRowr
 github.com/whencome/sqlparser v0.0.0-20201124134240-8655a1792dc5/go.mod h1:29O/lJbCHnCtDFCKggvoR5MerVNT/OLLOznlnXy1Wjw=
 github.com/whencome/xlog v1.0.4 h1:x/PJaqz6l7D04PwxPRVu9dQ6co1GosfsE1jQ7zJGpdI=
 github.com/whencome/xlog v1.0.4/go.mod h1:bllVQ3079gGaPVWzpdauVeqfAIpvEM1foJeLguSKJ+Y=
+github.com/whencome/xlog v1.1.0/go.mod h1:xKSsdqf72zFOpLuctC7CxU6WKAK0OlDKaM2vEGsdu60=

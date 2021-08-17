@@ -68,7 +68,7 @@ func (m *ShardingModelManager) GetDatabase() string {
 func (m *ShardingModelManager) NewQuerier() *Querier {
 	conn, err := m.GetConnection()
 	if err != nil {
-		xlog.Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
+		xlog.Use("db").Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
 		conn = nil
 	}
 	return NewModelQuerier(m.Model).Connect(conn).SetOptions(m.Settings).Select(m.QueryFieldsString())
@@ -79,7 +79,7 @@ func (m *ShardingModelManager) NewRawQuerier(querySQL string) *Querier {
 	// 获取数据库连接
 	conn, err := m.GetConnection()
 	if err != nil {
-		xlog.Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
+		xlog.Use("db").Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
 		conn = nil
 	}
 	return NewRawQuerier(querySQL).SetOptions(m.Settings).Connect(conn)
@@ -89,7 +89,7 @@ func (m *ShardingModelManager) NewRawQuerier(querySQL string) *Querier {
 func (m *ShardingModelManager) NewCommander() *Commander {
 	conn, err := m.GetConnection()
 	if err != nil {
-		xlog.Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
+		xlog.Use("db").Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
 		conn = nil
 	}
 	return NewCommander(m.Settings).Connect(conn)
@@ -291,7 +291,7 @@ func (m *ShardingModelManager) BuildDeleteSql(conds interface{}) (string, error)
 func (m *ShardingModelManager) Insert(obj interface{}) (int64, error) {
 	// 构造插入语句
 	insertSQL, err := m.BuildInsertSql(obj)
-	xlog.Debugf("* Insert : %s", insertSQL)
+	xlog.Use("db").Debugf("* Insert : %s", insertSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -303,7 +303,7 @@ func (m *ShardingModelManager) Insert(obj interface{}) (int64, error) {
 	// 执行插入操作
 	result, err := conn.Exec(insertSQL)
 	if err != nil {
-		xlog.Error("exec insert failed : ", err, ";  sql : ", insertSQL)
+		xlog.Use("db").Error("exec insert failed : ", err, ";  sql : ", insertSQL)
 		return 0, err
 	}
 	return result.LastInsertId()
@@ -313,7 +313,7 @@ func (m *ShardingModelManager) Insert(obj interface{}) (int64, error) {
 func (m *ShardingModelManager) InsertBatch(objs interface{}) (int64, error) {
 	// 构造插入语句
 	insertSQL, err := m.BuildBatchInsertSql(objs)
-	xlog.Debugf("* Batch Insert : %s", insertSQL)
+	xlog.Use("db").Debugf("* Batch Insert : %s", insertSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -325,7 +325,7 @@ func (m *ShardingModelManager) InsertBatch(objs interface{}) (int64, error) {
 	// 执行插入操作
 	_, err = conn.Exec(insertSQL)
 	if err != nil {
-		xlog.Error("exec batch insert failed : ", err, ";  sql : ", insertSQL)
+		xlog.Use("db").Error("exec batch insert failed : ", err, ";  sql : ", insertSQL)
 		return 0, err
 	}
 	// 只返回是否成功
@@ -335,7 +335,7 @@ func (m *ShardingModelManager) InsertBatch(objs interface{}) (int64, error) {
 // ReplaceInto 批量插入/更新数据
 func (mm *ShardingModelManager) ReplaceInto(objs interface{}) (int64, error) {
 	replaceSQL, err := mm.BuildReplaceIntoSql(objs)
-	xlog.Debugf("* SQL : %s", replaceSQL)
+	xlog.Use("db").Debugf("* SQL : %s", replaceSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -347,7 +347,7 @@ func (mm *ShardingModelManager) ReplaceInto(objs interface{}) (int64, error) {
 	// 执行插入操作
 	_, err = conn.Exec(replaceSQL)
 	if err != nil {
-		xlog.Error("exec failed : ", err, ";  sql : ", replaceSQL)
+		xlog.Use("db").Error("exec failed : ", err, ";  sql : ", replaceSQL)
 		return 0, err
 	}
 	// 只返回是否成功
@@ -358,7 +358,7 @@ func (mm *ShardingModelManager) ReplaceInto(objs interface{}) (int64, error) {
 func (m *ShardingModelManager) Update(obj interface{}) (int64, error) {
 	// 构造更新语句
 	updateSQL, err := m.BuildUpdateSql(obj)
-	xlog.Debugf("* Update : %s", updateSQL)
+	xlog.Use("db").Debugf("* Update : %s", updateSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -370,7 +370,7 @@ func (m *ShardingModelManager) Update(obj interface{}) (int64, error) {
 	// 执行插入操作
 	result, err := conn.Exec(updateSQL)
 	if err != nil {
-		xlog.Error("exec update failed : ", err, ";  sql : ", updateSQL)
+		xlog.Use("db").Error("exec update failed : ", err, ";  sql : ", updateSQL)
 		return 0, err
 	}
 	return result.RowsAffected()
@@ -380,7 +380,7 @@ func (m *ShardingModelManager) Update(obj interface{}) (int64, error) {
 func (m *ShardingModelManager) UpdateByCond(params map[string]interface{}, cond interface{}) (int64, error) {
 	// 构造更新语句
 	updateSQL, err := m.BuildUpdateSqlByCond(params, cond)
-	xlog.Debugf("* UpdateByCond : %s", updateSQL)
+	xlog.Use("db").Debugf("* UpdateByCond : %s", updateSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -392,7 +392,7 @@ func (m *ShardingModelManager) UpdateByCond(params map[string]interface{}, cond 
 	// 执行更新操作
 	result, err := conn.Exec(updateSQL)
 	if err != nil {
-		xlog.Error("exec update failed : ", err, ";  sql : ", updateSQL)
+		xlog.Use("db").Error("exec update failed : ", err, ";  sql : ", updateSQL)
 		return 0, err
 	}
 	return result.RowsAffected()
@@ -402,7 +402,7 @@ func (m *ShardingModelManager) UpdateByCond(params map[string]interface{}, cond 
 func (m *ShardingModelManager) Delete(cond interface{}) (int64, error) {
 	// 构造删除语句
 	delSQL, err := m.BuildDeleteSql(cond)
-	xlog.Debugf("* Delete : %s", delSQL)
+	xlog.Use("db").Debugf("* Delete : %s", delSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -414,7 +414,7 @@ func (m *ShardingModelManager) Delete(cond interface{}) (int64, error) {
 	// 执行删除操作
 	result, err := conn.Exec(delSQL)
 	if err != nil {
-		xlog.Error("exec delete failed : ", err, ";  sql : ", delSQL)
+		xlog.Use("db").Error("exec delete failed : ", err, ";  sql : ", delSQL)
 		return 0, err
 	}
 	return result.RowsAffected()
