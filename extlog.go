@@ -142,15 +142,15 @@ func (l *StdLogger) Panicln(v ...interface{}) {
 
 // Raw record origin raw log
 func (l *StdLogger) Raw(v ...interface{}) {
-	l.OutputRaw(fmt.Sprint(v...))
+	_ = l.OutputRaw(fmt.Sprint(v...))
 }
 
 func (l *StdLogger) Rawf(format string, v ...interface{}) {
-	l.OutputRaw(fmt.Sprintf(format, v...))
+	_ = l.OutputRaw(fmt.Sprintf(format, v...))
 }
 
 func (l *StdLogger) Rawln(v ...interface{}) {
-	l.OutputRaw(fmt.Sprintln(v...))
+	_ = l.OutputRaw(fmt.Sprintln(v...))
 }
 
 func (l *StdLogger) Json(v interface{}) {
@@ -159,6 +159,6 @@ func (l *StdLogger) Json(v interface{}) {
 		return
 	}
 	d = append(d, '\n')
-	l.OutputRawBytes(d)
+	_ = l.OutputRawBytes(d)
 }
 

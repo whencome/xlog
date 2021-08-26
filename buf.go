@@ -1,6 +1,7 @@
 package xlog
 
 import (
+	"encoding/json"
 	"fmt"
 	"runtime"
 	"runtime/debug"
@@ -8,46 +9,39 @@ import (
 	"time"
 )
 
-// BufLogger buffer log pieces and write all in once, make sure relevant logs show together.
-// note that this will make log in a rough part of time
 type BufLogger struct {
-	mu     sync.Mutex
-	buf    []byte
-	def    *LogDefinition // 日志定义
-	logger *StdLogger
+	mu      sync.Mutex
+	buf     []byte
+	maxSize int
+	def     *LogDefinition // 日志定义
+	logger  *StdLogger
 }
 
-// NewBufLogger create a buflogger of default logger with a specified cap
 func NewBufLogger(size int) *BufLogger {
 	return Use("default").NewBufLogger(size)
 }
 
-// DefaultBufLogger create a buflogger of default logger with a fixed cap
 func DefaultBufLogger() *BufLogger {
 	return Use("default").DefaultBufLogger()
 }
 
 func (l *StdLogger) NewBufLogger(size int) *BufLogger {
-	if size < 0 {
-		size = 2048
-	}
-	if size > 1024 * 100 {
-		size = 1024 * 100
-	}
 	return &BufLogger{
-		mu:     sync.Mutex{},
-		buf:    make([]byte, size),
-		def:    l.def,
-		logger: l,
+		mu:      sync.Mutex{},
+		buf:     make([]byte, 0),
+		maxSize: size,
+		def:     l.def,
+		logger:  l,
 	}
 }
 
 func (l *StdLogger) DefaultBufLogger() *BufLogger {
 	return &BufLogger{
-		mu:     sync.Mutex{},
-		buf:    make([]byte, 2048),
-		def:    l.def,
-		logger: l,
+		mu:      sync.Mutex{},
+		buf:     make([]byte, 0),
+		maxSize: 2048,
+		def:     l.def,
+		logger:  l,
 	}
 }
 
@@ -58,6 +52,7 @@ func (l *BufLogger) Output(calldepth int, level, s string) error {
 	var line int
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	// l.buf = l.buf[:0]
 	if l.def.Flags&(Lshortfile|Llongfile) != 0 {
 		// Release lock while getting caller info - it's expensive.
 		l.mu.Unlock()
@@ -94,20 +89,44 @@ func (l *BufLogger) Output(calldepth int, level, s string) error {
 	if l.def.ColorfulPrint && l.def.OutputType != LogToFile {
 		l.buf = append(l.buf, "\x1b[0m"...)
 	}
+	if len(l.buf) >= l.maxSize {
+		_ = l.Flush()
+	}
+	return nil
+}
+
+// OutputRaw write raw log to stdout / file
+func (l *BufLogger) OutputRaw(s string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.buf = append(l.buf, s...)
+	if len(l.buf) >= l.maxSize {
+		_ = l.Flush()
+	}
+	return nil
+}
+
+func (l *BufLogger) OutputRawBytes(b []byte) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.buf = append(l.buf, b...)
+	if len(l.buf) >= l.maxSize {
+		_ = l.Flush()
+	}
 	return nil
 }
 
 func (l *BufLogger) Flush() error {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.logger.OutputRawBytes(l.buf)
-	// 清空缓存
-	l.buf = l.buf[:0]
+	if len(l.buf) > 0 {
+		_ = l.logger.OutputRawBytes(l.buf)
+		// 清空缓存
+		l.buf = l.buf[:0]
+	}
 	return nil
 }
 
 func (l *BufLogger) Close() {
-	l.Flush()
+	_ = l.Flush()
 	l.buf = nil
 	l.logger = nil
 }
@@ -120,9 +139,9 @@ func (l *BufLogger) Write(level, data string) {
 	if l.buf == nil || l.logger == nil {
 		return
 	}
-	l.Output(3, level, data)
+	_ = l.Output(3, level, data)
 	if l.def.LogStack && numLevel >= l.def.LogStackLevel {
-		l.Output(3, level, string(debug.Stack()))
+		_ = l.Output(3, level, string(debug.Stack()))
 	}
 }
 
@@ -184,4 +203,26 @@ func (l *BufLogger) Errorf(format string, v ...interface{}) {
 
 func (l *BufLogger) Errorln(v ...interface{}) {
 	l.Logln(LogLevelError, v...)
+}
+
+// Raw record origin raw log
+func (l *BufLogger) Raw(v ...interface{}) {
+	_ = l.OutputRaw(fmt.Sprint(v...))
+}
+
+func (l *BufLogger) Rawf(format string, v ...interface{}) {
+	_ = l.OutputRaw(fmt.Sprintf(format, v...))
+}
+
+func (l *BufLogger) Rawln(v ...interface{}) {
+	_ = l.OutputRaw(fmt.Sprintln(v...))
+}
+
+func (l *BufLogger) Json(v interface{}) {
+	d, e := json.Marshal(v)
+	if e != nil {
+		return
+	}
+	d = append(d, '\n')
+	_ = l.OutputRawBytes(d)
 }

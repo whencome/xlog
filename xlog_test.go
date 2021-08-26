@@ -98,4 +98,31 @@ func TestLogJson(t *testing.T) {
 	Json(data)
 }
 
+func TestBuflogger(t *testing.T) {
+	logger := NewBufLogger(4096)
+	logger.Errorln("select * from table where id > 0 limit 20")
+	logger.Raw("start: 2021-08-17 10:00:00.023\t")
+	logger.Raw("end: 2021-08-17 10:00:00.114\t")
+	logger.Rawln("cost: 0.91s")
+	logger.Close()
+}
+
+func TestKVlogger(t *testing.T) {
+	logger := NewKVLogger()
+	logger.Put("query", "select * from table where id > 0 limit 20")
+	logger.Put("start", "2021-08-17 10:00:00.023")
+	logger.Put("end", "2021-08-17 10:00:00.114")
+	logger.Put("cost", "0.91s")
+	logger.OutputJson(defaultLogger)
+}
+
+func TestTimerKVlogger(t *testing.T) {
+	logger := NewTimerKVLogger()
+	logger.Put("query", "select * from table where id > 0 limit 20")
+	logger.Put("start", "2021-08-17 10:00:00.023")
+	logger.Put("end", "2021-08-17 10:00:00.114")
+	logger.Put("cost", "0.91s")
+	logger.Put("message", "测试一下中文内容")
+	logger.OutputJson(defaultLogger)
+}
 
