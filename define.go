@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/whencome/xlog/def"
+	"github.com/whencome/xlog/util"
 )
 
 // Config 定义日志配置
@@ -33,18 +36,18 @@ type LogDefinition struct {
 
 // 返回一个默认的日志定义
 func defaultLogDefinition() *LogDefinition {
-	def := &LogDefinition{}
-	def.Dir = LogDir
-	def.Level = logLevel
-	def.FilePrefix = LogFilePrefix
-	def.Flags = logFlags
-	def.Output = logOutput
-	def.OutputType = logOutputType
-	def.RotateType = logRotateType
-	def.LogStack = logStack
-	def.LogStackLevel = logStackLevel
-	def.ColorfulPrint = colorfulPrint
-	return def
+	d := &LogDefinition{}
+	d.Dir = LogDir
+	d.Level = logLevel
+	d.FilePrefix = LogFilePrefix
+	d.Flags = logFlags
+	d.Output = logOutput
+	d.OutputType = logOutputType
+	d.RotateType = logRotateType
+	d.LogStack = logStack
+	d.LogStackLevel = logStackLevel
+	d.ColorfulPrint = colorfulPrint
+	return d
 }
 
 // 根据配置返回一个日志定义
@@ -53,94 +56,94 @@ func newLogDefinition(cfg *Config) *LogDefinition {
 	if cfg == nil {
 		return defaultLogDefinition()
 	}
-	def := &LogDefinition{}
+	d := &LogDefinition{}
 	// 设置日志输出类型
 	// LogToFile - 输出到文件
 	// LogToStdout - 输出到标准输出
 	// LogToStderr - 输出到标准错误输出
 	switch cfg.Output {
 	case "file":
-		def.OutputType = LogToFile
+		d.OutputType = def.LogToFile
 	case "stderr":
-		def.OutputType = LogToStderr
+		d.OutputType = def.LogToStderr
 	default:
 		// 不设置默认全部输出到标准输出设备
-		def.OutputType = LogToStdout
+		d.OutputType = def.LogToStdout
 	}
 	// 设置日志等级
 	switch cfg.LogLevel {
 	case "debug":
-		def.Level = LevelDebug
+		d.Level = def.LevelDebug
 	case "info":
-		def.Level = LevelInfo
+		d.Level = def.LevelInfo
 	case "warn":
-		def.Level = LevelWarn
+		d.Level = def.LevelWarn
 	case "error":
-		def.Level = LevelError
+		d.Level = def.LevelError
 	case "fatal":
-		def.Level = LevelFatal
+		d.Level = def.LevelFatal
 	default:
-		def.Level = LevelError
+		d.Level = def.LevelError
 	}
 	// 设置flag，此处的内容与golang中的log包的相关设置相同
 	// 此处暂不支持自定义设置，如果需要设置需要在此方法之外（前）自行设定
-	def.Flags = Ldate | Ltime | Lmicroseconds | Lshortfile
+	d.Flags = def.Ldate | def.Ltime | def.Lmicroseconds | def.Lshortfile
 	// 设置日志文件存储目录，仅当输出类型为 LogToFile 有效
-	initLogDir(cfg.LogPath)
-	def.Dir = cfg.LogPath
+	util.InitLogDir(cfg.LogPath)
+	d.Dir = cfg.LogPath
 	// 设置日志文件切割类型
 	switch cfg.Rotate {
 	case "none":
-		def.RotateType = RotateNone
+		d.RotateType = def.RotateNone
 	case "year":
-		def.RotateType = RotateByYear
+		d.RotateType = def.RotateByYear
 	case "month":
-		def.RotateType = RotateByMonth
+		d.RotateType = def.RotateByMonth
 	case "date":
-		def.RotateType = RotateByDate
+		d.RotateType = def.RotateByDate
 	case "hour":
-		def.RotateType = RotateByHour
+		d.RotateType = def.RotateByHour
 	default:
-		def.RotateType = RotateByDate
+		d.RotateType = def.RotateByDate
 	}
 
 	// 设置日志文件名前缀，仅当输出类型为 LogToFile 有效
-	def.FilePrefix = cfg.LogPrefix
+	d.FilePrefix = cfg.LogPrefix
 
 	// 调用栈信息
-	def.LogStack = false
+	d.LogStack = false
 	if cfg.LogStackLevel != "none" {
-		def.LogStack = true
-		def.LogStackLevel = numLogLevel(cfg.LogStackLevel)
+		d.LogStack = true
+		d.LogStackLevel = util.NumLogLevel(cfg.LogStackLevel)
 	}
 
 	// 日志打印
-	def.ColorfulPrint = cfg.ColorfulPrint
+	d.ColorfulPrint = cfg.ColorfulPrint
 
-	return def
+	return d
 }
 
 // getLogRotateTimeFmt 获取日志文件切割时间格式
-func (def *LogDefinition) GetLogRotateTimeFmt() string {
+func (d *LogDefinition) GetLogRotateTimeFmt() string {
 	var timeFmt string
-	switch logRotateType {
-	case RotateByYear:
+	switch d.RotateType {
+	case def.RotateByYear:
 		timeFmt = "2006"
-	case RotateByMonth:
+	case def.RotateByMonth:
 		timeFmt = "200601"
-	case RotateByDate:
+	case def.RotateByDate:
 		timeFmt = "20060102"
-	case RotateByHour:
+	case def.RotateByHour:
 		timeFmt = "2006010215"
 	}
 	return timeFmt
 }
 
 // getLogFilePath 获取日志文件路径
-func (def *LogDefinition) GetLogFilePath() string {
-	if def.RotateType == RotateNone {
-		return fmt.Sprintf("%s/%s%s.log", def.Dir, def.FilePrefix, "all")
+func (d *LogDefinition) GetLogFilePath() string {
+	if d.RotateType == def.RotateNone {
+		return fmt.Sprintf("%s/%s%s.log", d.Dir, d.FilePrefix, "all")
 	}
-	logRotateTimeFmt := getLogRotateTimeFmt()
-	return fmt.Sprintf("%s/%s%s.log", def.Dir, def.FilePrefix, time.Now().Format(logRotateTimeFmt))
+	logRotateTimeFmt := util.GetLogRotateTimeFmt(d.RotateType)
+	return fmt.Sprintf("%s/%s%s.log", d.Dir, d.FilePrefix, time.Now().Format(logRotateTimeFmt))
 }

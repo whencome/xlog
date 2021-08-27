@@ -1,11 +1,17 @@
 package xlog
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"sync"
 	"time"
+
+	"github.com/whencome/xlog/def"
+	"github.com/whencome/xlog/util"
 )
 
 // StdLogger a standard logger
@@ -41,7 +47,7 @@ func (l *StdLogger) refresh(c *Config) {
 func (l *StdLogger) initOut() {
 	// 关闭之前的输出对象，以支持动态重置
 	if l.Out != nil {
-		if l.def.OutputType != l.OutputType && l.OutputType == LogToFile {
+		if l.def.OutputType != l.OutputType && l.OutputType == def.LogToFile {
 			oldWriter := l.Out
 			// 关闭之前的文件
 			go func() {
@@ -54,23 +60,23 @@ func (l *StdLogger) initOut() {
 	}
 	// 执行初始化
 	switch l.def.OutputType {
-	case LogToStdout:
-		l.OutputType = LogToStdout
+	case def.LogToStdout:
+		l.OutputType = def.LogToStdout
 		l.Out = os.Stdout
-	case LogToStderr:
-		l.OutputType = LogToStderr
+	case def.LogToStderr:
+		l.OutputType = def.LogToStderr
 		l.Out = os.Stderr
-	case LogToFile:
+	case def.LogToFile:
 		// 设置日志文件
 		l.LogFile = l.def.GetLogFilePath()
 		l.ValidMark = l.calCurrentMark()
 		writer, err := os.OpenFile(l.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
 			// 如果文件无法写入，则将日志输出到标准输出
-			l.OutputType = LogToStdout
+			l.OutputType = def.LogToStdout
 			l.Out = os.Stdout
 		} else {
-			l.OutputType = LogToFile
+			l.OutputType = def.LogToFile
 			l.Out = writer
 		}
 	}
@@ -78,7 +84,7 @@ func (l *StdLogger) initOut() {
 
 // calCurrentMark 计算当前时间有效标记
 func (l *StdLogger) calCurrentMark() string {
-	if l.def.RotateType == RotateNone {
+	if l.def.RotateType == def.RotateNone {
 		return ""
 	}
 	return time.Now().Format(l.def.GetLogRotateTimeFmt())
@@ -91,7 +97,7 @@ func (l *StdLogger) Output(calldepth int, level, s string) error {
 	var line int
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.def.Flags & (Lshortfile|Llongfile) != 0 {
+	if l.def.Flags & (def.Lshortfile | def.Llongfile) != 0 {
 		// Release lock while getting caller info - it's expensive.
 		l.mu.Unlock()
 		var ok bool
@@ -104,36 +110,35 @@ func (l *StdLogger) Output(calldepth int, level, s string) error {
 	}
 	l.buf = l.buf[:0]
 	// colorful print begin
-	if l.def.ColorfulPrint && l.def.OutputType != LogToFile {
+	if l.def.ColorfulPrint && l.def.OutputType != def.LogToFile {
 		switch level {
-		case LogLevelInfo:
+		case def.LogLevelInfo:
 			l.buf = append(l.buf, "\x1b[34m"...)
-		case LogLevelWarn:
+		case def.LogLevelWarn:
 			l.buf = append(l.buf, "\x1b[33m"...)
-		case LogLevelError:
+		case def.LogLevelError:
 			l.buf = append(l.buf, "\x1b[31m"...)
-		case LogLevelFatal:
+		case def.LogLevelFatal:
 			l.buf = append(l.buf, "\x1b[35m"...)
 		}
 
 	}
 	// log prefix
-	formatLogPrefix(&l.buf, now, level, file, line)
+	util.FormatLogPrefix(&l.buf, logFlags, now, level, file, line)
 	// log content
 	l.buf = append(l.buf, s...)
 	if len(s) == 0 || s[len(s)-1] != '\n' {
 		l.buf = append(l.buf, '\n')
 	}
 	// colorful print end
-	if l.def.ColorfulPrint && l.def.OutputType != LogToFile {
+	if l.def.ColorfulPrint && l.def.OutputType != def.LogToFile {
 		l.buf = append(l.buf, "\x1b[0m"...)
 	}
 	// 输出到文件
 	return l.flush()
 }
 
-// OutputRaw write raw log to stdout / file
-func (l *StdLogger) OutputRaw(s string) error {
+func (l *StdLogger) WriteString(s string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.buf = l.buf[:0]
@@ -141,18 +146,19 @@ func (l *StdLogger) OutputRaw(s string) error {
 	return l.flush()
 }
 
-func (l *StdLogger) OutputRawBytes(b []byte) error {
+func (l *StdLogger) Write(b []byte) (int, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	n := len(b)
 	l.buf = l.buf[:0]
 	l.buf = append(l.buf, b...)
-	return l.flush()
+	return n, l.flush()
 }
 
 // Flush 用于将缓存中的日志内容吸入文件或者输出到标准输出设备
 func (l *StdLogger) flush() error {
 	// 计算mark，用以确认输出文件
-	if l.def.OutputType == LogToFile && l.def.RotateType != RotateNone {
+	if l.def.OutputType == def.LogToFile && l.def.RotateType != def.RotateNone {
 		curMark := l.calCurrentMark()
 		if curMark != l.ValidMark {
 			oldWriter := l.Out
@@ -169,4 +175,127 @@ func (l *StdLogger) flush() error {
 	// 输出日志
 	_, err := l.Out.Write(l.buf)
 	return err
+}
+
+func (l *StdLogger) levelLog(level, data string) {
+	numLevel := util.NumLogLevel(level)
+	if numLevel < l.def.Level {
+		return
+	}
+	l.Output(3, level, data)
+	if l.def.LogStack && numLevel >= l.def.LogStackLevel {
+		l.Output(3, level, string(debug.Stack()))
+	}
+}
+
+func (l *StdLogger) Log(level string, v ...interface{}) {
+	l.levelLog(level, fmt.Sprint(v...))
+}
+
+func (l *StdLogger) Logf(level string, format string, v ...interface{}) {
+	l.levelLog(level, fmt.Sprintf(format, v...))
+}
+
+func (l *StdLogger) Logln(level string, v ...interface{}) {
+	l.levelLog(level, fmt.Sprintln(v...))
+}
+
+func (l *StdLogger) Debug(v ...interface{}) {
+	l.Log(def.LogLevelDebug, v...)
+}
+
+func (l *StdLogger) Debugf(format string, v ...interface{}) {
+	l.Logf(def.LogLevelDebug, format, v...)
+}
+
+func (l *StdLogger) Debugln(v ...interface{}) {
+	l.Logln(def.LogLevelDebug, v...)
+}
+
+func (l *StdLogger) Info(v ...interface{}) {
+	l.Log(def.LogLevelInfo, v...)
+}
+
+func (l *StdLogger) Infof(format string, v ...interface{}) {
+	l.Logf(def.LogLevelInfo, format, v...)
+}
+
+func (l *StdLogger) Infoln(v ...interface{}) {
+	l.Logln(def.LogLevelInfo, v...)
+}
+
+func (l *StdLogger) Warn(v ...interface{}) {
+	l.Log(def.LogLevelWarn, v...)
+}
+
+func (l *StdLogger) Warnf(format string, v ...interface{}) {
+	l.Logf(def.LogLevelWarn, format, v...)
+}
+
+func (l *StdLogger) Warnln(v ...interface{}) {
+	l.Logln(def.LogLevelWarn, v...)
+}
+
+func (l *StdLogger) Error(v ...interface{}) {
+	l.Log(def.LogLevelError, v...)
+}
+
+func (l *StdLogger) Errorf(format string, v ...interface{}) {
+	l.Logf(def.LogLevelError, format, v...)
+}
+
+func (l *StdLogger) Errorln(v ...interface{}) {
+	l.Logln(def.LogLevelError, v...)
+}
+
+func (l *StdLogger) Fatal(v ...interface{}) {
+	l.Log(def.LogLevelFatal, v...)
+	os.Exit(1)
+}
+
+func (l *StdLogger) Fatalf(format string, v ...interface{}) {
+	l.Logf(def.LogLevelFatal, format, v...)
+	os.Exit(1)
+}
+
+func (l *StdLogger) Fatalln(v ...interface{}) {
+	l.Logln(def.LogLevelFatal, v...)
+	os.Exit(1)
+}
+
+func (l *StdLogger) Panic(v ...interface{}) {
+	l.Log(def.LogLevelFatal, v...)
+	panic(fmt.Sprint(v...))
+}
+
+func (l *StdLogger) Panicf(format string, v ...interface{}) {
+	l.Logf(def.LogLevelFatal, format, v...)
+	panic(fmt.Sprintf(format, v...))
+}
+
+func (l *StdLogger) Panicln(v ...interface{}) {
+	l.Logln(def.LogLevelFatal, v...)
+	panic(fmt.Sprintln(v...))
+}
+
+// Raw record origin raw log
+func (l *StdLogger) Raw(v ...interface{}) {
+	_ = l.WriteString(fmt.Sprint(v...))
+}
+
+func (l *StdLogger) Rawf(format string, v ...interface{}) {
+	_ = l.WriteString(fmt.Sprintf(format, v...))
+}
+
+func (l *StdLogger) Rawln(v ...interface{}) {
+	_ = l.WriteString(fmt.Sprintln(v...))
+}
+
+func (l *StdLogger) Json(v interface{}) {
+	d, e := json.Marshal(v)
+	if e != nil {
+		return
+	}
+	d = append(d, '\n')
+	_, _ = l.Write(d)
 }

@@ -1,9 +1,10 @@
-package xlog
+package logger
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -108,22 +109,27 @@ func (d *KVData) GetJson() string {
 	return buf.String()
 }
 
+
+//-------------- KVLogger ---------------
 type KVLogger struct {
+	writer     io.Writer
 	data       *KVData
 	recordTime bool      // 是否记录耗时
 	startTime  time.Time // 开始时间
 	endTime    time.Time // 结束时间
 }
 
-func NewKVLogger() *KVLogger {
+func NewKVLogger(w io.Writer) *KVLogger {
 	return &KVLogger{
+		writer:     w,
 		data:       NewKVData(),
 		recordTime: false,
 	}
 }
 
-func NewTimerKVLogger() *KVLogger {
+func NewTimerKVLogger(w io.Writer) *KVLogger {
 	l := &KVLogger{
+		writer:     w,
 		data:       NewKVData(),
 		recordTime: true,
 	}
@@ -135,7 +141,7 @@ func (l *KVLogger) Put(k string, v interface{}) {
 	l.data.Put(k, v)
 }
 
-func (l *KVLogger) fill()  {
+func (l *KVLogger) fill() {
 	if !l.recordTime {
 		return
 	}
@@ -146,34 +152,19 @@ func (l *KVLogger) fill()  {
 	l.Put("@time_cost", fmt.Sprintf("%.3f ms", float64(l.endTime.UnixNano()-l.startTime.UnixNano())/1e6))
 }
 
-func (l *KVLogger) OutputLines(logger *StdLogger) {
-	l.fill()
-	data := l.data.GetLines()
-	if len(data) == 0 {
-		return
-	}
-	logger.Rawln(data)
-	l.Reset()
-}
-
-func (l *KVLogger) OutputRaw(logger *StdLogger) {
-	l.fill()
-	data := l.data.GetRaw()
-	if len(data) == 0 {
-		return
-	}
-	logger.Rawln(data)
-	l.Reset()
-}
-
-func (l *KVLogger) OutputJson(logger *StdLogger) {
+func (l *KVLogger) Write() (int, error) {
 	l.fill()
 	data := l.data.GetJson()
-	if len(data) == 0 {
-		return
+	if len(data) == 0 || l.writer == nil {
+		return 0, nil
 	}
-	logger.Rawln(data)
+	v := []byte(data)
+	if len(v) == 0 || v[len(v)-1] != '\n' {
+		v = append(v, '\n')
+	}
+	n, err := l.writer.Write(v)
 	l.Reset()
+	return n, err
 }
 
 func (l *KVLogger) Reset() {
@@ -182,4 +173,9 @@ func (l *KVLogger) Reset() {
 		l.startTime = time.Now()
 	}
 	return
+}
+
+func (l *KVLogger) Close() {
+	_, _ = l.Write()
+	l.data = nil
 }

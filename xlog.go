@@ -4,51 +4,14 @@
 package xlog
 
 import (
+	"io"
 	"os"
-)
+	"sync"
 
-// 定义日志等级
-const (
-	LevelDebug = iota
-	LevelInfo
-	LevelWarn
-	LevelError
-	LevelFatal
+	"github.com/whencome/xlog/def"
+	"github.com/whencome/xlog/logger"
+	"github.com/whencome/xlog/util"
 )
-
-// 定义输出类型
-const (
-	LogToStdout = iota // 输出到标准输出
-	LogToStderr        // 输出到标准错误输出
-	LogToFile          // 输出到文件
-)
-
-// 定义日志切割类型
-const (
-	RotateNone = iota
-	RotateByYear
-	RotateByMonth
-	RotateByDate
-	RotateByHour
-)
-
-// flags
-const (
-	Ldate         = 1 << iota     // the date in the local time zone: 2009/01/23
-	Ltime                         // the time in the local time zone: 01:23:23
-	Lmicroseconds                 // microsecond resolution: 01:23:23.123123.  assumes Ltime.
-	Llongfile                     // full file name and line number: /a/b/c/d.go:23
-	Lshortfile                    // final file name element and line number: d.go:23. overrides Llongfile
-	LUTC                          // if Ldate or Ltime is set, use UTC rather than the local time zone
-	LstdFlags     = Ldate | Ltime // initial values for the standard logger
-)
-
-// 日志级别字符串
-const LogLevelDebug = "debug"
-const LogLevelInfo = "info"
-const LogLevelWarn = "warn"
-const LogLevelError = "error"
-const LogLevelFatal = "fatal"
 
 // 定义日志对象
 
@@ -59,19 +22,19 @@ var LogDir = "./logs"
 var LogFilePrefix = "log"
 
 // 定义日志输出类型
-var logOutputType = LogToStdout
+var logOutputType = def.LogToStdout
 
 // 定义日志输出目标
 var logOutput = os.Stderr
 
 // 定义日志切割类型
-var logRotateType = RotateByDate
+var logRotateType = def.RotateByDate
 
 // 设置日志记录级别
-var logLevel = LevelWarn
+var logLevel = def.LevelWarn
 
 // 日志格式标签
-var logFlags = LstdFlags
+var logFlags = def.LstdFlags
 
 // 是否开启彩色打印
 var colorfulPrint = true
@@ -79,28 +42,13 @@ var colorfulPrint = true
 // 设置记录调用栈的开关
 // 默认在error以及以上的级别记录调用栈，如果需要关闭调用栈，调用DisableLogStack()方法
 var logStack = true
-var logStackLevel = LevelError
+var logStackLevel = def.LevelError
 
 // 默认日志对象
 var defaultLogger *StdLogger = NewStdLogger(nil)
 
-// numLogLevel 获取日志等级的对应的数字
-func numLogLevel(l string) int {
-	num := LevelError
-	switch l {
-	case LogLevelDebug:
-		num = LevelDebug
-	case LogLevelInfo:
-		num = LevelInfo
-	case LogLevelWarn:
-		num = LevelWarn
-	case LogLevelError:
-		num = LevelError
-	case LogLevelFatal:
-		num = LevelFatal
-	}
-	return num
-}
+// 定义日志映射列表
+var loggerMaps sync.Map
 
 // SetLogFilePrefix 设置日志文件前缀
 func SetLogFilePrefix(prefix string) {
@@ -109,26 +57,26 @@ func SetLogFilePrefix(prefix string) {
 
 // SetLogDir 设置日志存储目录
 func SetLogDir(path string) {
-	initLogDir(path)
+	util.InitLogDir(path)
 	LogDir = path
 }
 
 // SetLogLevel 设置日志等级
 func SetLogLevel(level string) {
-	numLevel := numLogLevel(level)
-	if numLevel > LevelFatal {
-		numLevel = LevelError
+	numLevel := util.NumLogLevel(level)
+	if numLevel > def.LevelFatal {
+		numLevel = def.LevelError
 	}
-	if numLevel < LevelDebug {
-		numLevel = LevelDebug
+	if numLevel < def.LevelDebug {
+		numLevel = def.LevelDebug
 	}
 	logLevel = numLevel
 }
 
 // SetLogOutputType 设置日志输出类型
 func SetLogOutputType(out int) {
-	if out != LogToStdout && out != LogToStderr && out != LogToFile {
-		logOutputType = LogToStdout
+	if out != def.LogToStdout && out != def.LogToStderr && out != def.LogToFile {
+		logOutputType = def.LogToStdout
 	}
 	logOutputType = out
 }
@@ -140,8 +88,8 @@ func SetLogFlags(flag int) {
 
 // SetLogRotateType set the way to cut log files
 func SetLogRotateType(t int) {
-	if t < RotateNone || t > RotateByHour {
-		t = RotateByDate
+	if t < def.RotateNone || t > def.RotateByHour {
+		t = def.RotateByDate
 	}
 	logRotateType = t
 }
@@ -170,3 +118,52 @@ func EnableColorfulPrint() {
 func Init(cfg *Config) {
 	Register("default", cfg)
 }
+
+// 注册一个日志对象
+func Register(k string, cfg *Config) {
+	var stdLogger *StdLogger
+	// 检查logger是否已经存在
+	l, ok := loggerMaps.Load(k)
+	if ok && l != nil {
+		stdLogger = l.(*StdLogger)
+		stdLogger.refresh(cfg)
+		return
+	}
+	// 创建一个新的logger
+	stdLogger = NewStdLogger(cfg)
+	loggerMaps.Store(k, stdLogger)
+}
+
+// 选择需要使用的日志对象
+func Use(k string) *StdLogger {
+	l, ok := loggerMaps.Load(k)
+	if !ok {
+		return defaultLogger
+	}
+	sl, ok := l.(*StdLogger)
+	if !ok {
+		return defaultLogger
+	}
+	return sl
+}
+
+// NewKVLogger 创建一个普通的KVLogger
+func NewKVLogger(w io.Writer) *logger.KVLogger {
+	return logger.NewKVLogger(w)
+}
+
+// NewTimerKVLogger 创建一个自带记时间的KVLogger
+func NewTimerKVLogger(w io.Writer) *logger.KVLogger {
+	return logger.NewTimerKVLogger(w)
+}
+
+// NewKVLogger 创建一个普通的KVLogger
+func NewBufLogger(w io.Writer) *logger.BufLogger {
+	return logger.NewBufLogger(w)
+}
+
+// NewTimerKVLogger 创建一个自带记时间的KVLogger
+func NewStackBufLogger(w io.Writer) *logger.BufLogger {
+	return logger.NewStackBufLogger(w)
+}
+

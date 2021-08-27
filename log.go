@@ -5,124 +5,127 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
+
+	"github.com/whencome/xlog/def"
+	"github.com/whencome/xlog/util"
 )
 
-func Write(level, data string) {
+func levelLog(level, data string) {
 	l := Use("default")
-	numLevel := numLogLevel(level)
+	numLevel := util.NumLogLevel(level)
 	if numLevel < l.def.Level {
 		return
 	}
-	l.Output(3, level, data)
+	_ = l.Output(3, level, data)
 	if l.def.LogStack && numLevel >= l.def.LogStackLevel {
-		l.Output(3, level, string(debug.Stack()))
+		_ = l.Output(3, level, string(debug.Stack()))
 	}
 }
 
 // Log record a specified level's log
 func Log(level string, v ...interface{}) {
-	Write(level, fmt.Sprint(v...))
+	levelLog(level, fmt.Sprint(v...))
 }
 
 // Logf record a specified level's formatted log
 func Logf(level string, format string, v ...interface{}) {
-	Write(level, fmt.Sprintf(format, v...))
+	levelLog(level, fmt.Sprintf(format, v...))
 }
 
 // Logf record a specified level's log with a new line
 func Logln(level string, v ...interface{}) {
-	Write(level, fmt.Sprintln(v...))
+	levelLog(level, fmt.Sprintln(v...))
 }
 
 func Debug(v ...interface{}) {
-	Log(LogLevelDebug, v...)
+	Log(def.LogLevelDebug, v...)
 }
 
 func Debugf(format string, v ...interface{}) {
-	Logf(LogLevelDebug, format, v...)
+	Logf(def.LogLevelDebug, format, v...)
 }
 
 func Debugln(v ...interface{}) {
-	Logln(LogLevelDebug, v...)
+	Logln(def.LogLevelDebug, v...)
 }
 
 func Info(v ...interface{}) {
-	Log(LogLevelInfo, v...)
+	Log(def.LogLevelInfo, v...)
 }
 
 func Infof(format string, v ...interface{}) {
-	Logf(LogLevelInfo, format, v...)
+	Logf(def.LogLevelInfo, format, v...)
 }
 
 func Infoln(v ...interface{}) {
-	Logln(LogLevelInfo, v...)
+	Logln(def.LogLevelInfo, v...)
 }
 
 func Warn(v ...interface{}) {
-	Log(LogLevelWarn, v...)
+	Log(def.LogLevelWarn, v...)
 }
 
 func Warnf(format string, v ...interface{}) {
-	Logf(LogLevelWarn, format, v...)
+	Logf(def.LogLevelWarn, format, v...)
 }
 
 func Warnln(v ...interface{}) {
-	Logln(LogLevelWarn, v...)
+	Logln(def.LogLevelWarn, v...)
 }
 
 func Error(v ...interface{}) {
-	Log(LogLevelError, v...)
+	Log(def.LogLevelError, v...)
 }
 
 func Errorf(format string, v ...interface{}) {
-	Logf(LogLevelError, format, v...)
+	Logf(def.LogLevelError, format, v...)
 }
 
 func Errorln(v ...interface{}) {
-	Logln(LogLevelError, v...)
+	Logln(def.LogLevelError, v...)
 }
 
 func Fatal(v ...interface{}) {
-	Log(LogLevelFatal, v...)
+	Log(def.LogLevelFatal, v...)
 	os.Exit(1)
 }
 
 func Fatalf(format string, v ...interface{}) {
-	Logf(LogLevelFatal, format, v...)
+	Logf(def.LogLevelFatal, format, v...)
 	os.Exit(1)
 }
 
 func Fatalln(v ...interface{}) {
-	Logln(LogLevelFatal, v...)
+	Logln(def.LogLevelFatal, v...)
 	os.Exit(1)
 }
 
 func Panic(v ...interface{}) {
-	Log(LogLevelFatal, v...)
+	Log(def.LogLevelFatal, v...)
 	panic(fmt.Sprint(v...))
 }
 
 func Panicf(format string, v ...interface{}) {
-	Logf(LogLevelFatal, format, v...)
+	Logf(def.LogLevelFatal, format, v...)
 	panic(fmt.Sprintf(format, v...))
 }
 
 func Panicln(v ...interface{}) {
-	Logln(LogLevelFatal, v...)
+	Logln(def.LogLevelFatal, v...)
 	panic(fmt.Sprintln(v...))
 }
 
 // Raw record origin raw log
 func Raw(v ...interface{}) {
-	Use("default").OutputRaw(fmt.Sprint(v...))
+	_ = Use("default").WriteString(fmt.Sprint(v...))
 }
 
 func Rawf(format string, v ...interface{}) {
-	Use("default").OutputRaw(fmt.Sprintf(format, v...))
+	_ = Use("default").WriteString(fmt.Sprintf(format, v...))
 }
 
 func Rawln(v ...interface{}) {
-	Use("default").OutputRaw(fmt.Sprintln(v...))
+	_ = Use("default").WriteString(fmt.Sprintln(v...))
 }
 
 func Json(v interface{}) {
@@ -131,5 +134,5 @@ func Json(v interface{}) {
 		return
 	}
 	d = append(d, '\n')
-	Use("default").OutputRawBytes(d)
+	_, _ = Use("default").Write(d)
 }
