@@ -168,6 +168,8 @@ func (l *KVLogger) Write() (int, error) {
 	if len(v) == 0 || v[len(v)-1] != '\n' {
 		v = append(v, '\n')
 	}
+	// 添加一个新的换行符，避免json数据太密集不好查看
+	v = append(v, '\n')
 	n, err := l.writer.Write(v)
 	l.Reset()
 	return n, err
