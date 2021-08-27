@@ -68,7 +68,7 @@ func (m *ShardingModelManager) GetDatabase() string {
 func (m *ShardingModelManager) NewQuerier() *Querier {
 	conn, err := m.GetConnection()
 	if err != nil {
-		xlog.Use("db").Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
+		xlog.Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
 		conn = nil
 	}
 	return NewModelQuerier(m.Model).Connect(conn).SetOptions(m.Settings).Select(m.QueryFieldsString())
@@ -79,7 +79,7 @@ func (m *ShardingModelManager) NewRawQuerier(querySQL string) *Querier {
 	// 获取数据库连接
 	conn, err := m.GetConnection()
 	if err != nil {
-		xlog.Use("db").Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
+		xlog.Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
 		conn = nil
 	}
 	return NewRawQuerier(querySQL).SetOptions(m.Settings).Connect(conn)
@@ -89,7 +89,7 @@ func (m *ShardingModelManager) NewRawQuerier(querySQL string) *Querier {
 func (m *ShardingModelManager) NewCommander() *Commander {
 	conn, err := m.GetConnection()
 	if err != nil {
-		xlog.Use("db").Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
+		xlog.Errorf("get db [%s] connection failed: %s", m.GetDatabase(), err)
 		conn = nil
 	}
 	return NewCommander(m.Settings).Connect(conn)
@@ -300,12 +300,17 @@ func (m *ShardingModelManager) Insert(obj interface{}) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// 获取日志对象
+	l := NewLogger()
+	l.SetCommand(insertSQL)
+	defer l.Close()
 	// 执行插入操作
 	result, err := conn.Exec(insertSQL)
 	if err != nil {
-		xlog.Use("db").Error("exec insert failed : ", err, ";  sql : ", insertSQL)
+		l.Fail(err.Error())
 		return 0, err
 	}
+	l.Success()
 	return result.LastInsertId()
 }
 
@@ -322,12 +327,17 @@ func (m *ShardingModelManager) InsertBatch(objs interface{}) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// 获取日志对象
+	l := NewLogger()
+	l.SetCommand(insertSQL)
+	defer l.Close()
 	// 执行插入操作
 	_, err = conn.Exec(insertSQL)
 	if err != nil {
-		xlog.Use("db").Error("exec batch insert failed : ", err, ";  sql : ", insertSQL)
+		l.Fail(err.Error())
 		return 0, err
 	}
+	l.Success()
 	// 只返回是否成功
 	return 1, nil
 }
@@ -344,12 +354,17 @@ func (mm *ShardingModelManager) ReplaceInto(objs interface{}) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// 获取日志对象
+	l := NewLogger()
+	l.SetCommand(replaceSQL)
+	defer l.Close()
 	// 执行插入操作
 	_, err = conn.Exec(replaceSQL)
 	if err != nil {
-		xlog.Use("db").Error("exec failed : ", err, ";  sql : ", replaceSQL)
+		l.Fail(err.Error())
 		return 0, err
 	}
+	l.Success()
 	// 只返回是否成功
 	return 1, nil
 }
@@ -367,12 +382,17 @@ func (m *ShardingModelManager) Update(obj interface{}) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// 获取日志对象
+	l := NewLogger()
+	l.SetCommand(updateSQL)
+	defer l.Close()
 	// 执行插入操作
 	result, err := conn.Exec(updateSQL)
 	if err != nil {
-		xlog.Use("db").Error("exec update failed : ", err, ";  sql : ", updateSQL)
+		l.Fail(err.Error())
 		return 0, err
 	}
+	l.Success()
 	return result.RowsAffected()
 }
 
@@ -389,12 +409,17 @@ func (m *ShardingModelManager) UpdateByCond(params map[string]interface{}, cond 
 	if err != nil {
 		return 0, err
 	}
+	// 获取日志对象
+	l := NewLogger()
+	l.SetCommand(updateSQL)
+	defer l.Close()
 	// 执行更新操作
 	result, err := conn.Exec(updateSQL)
 	if err != nil {
-		xlog.Use("db").Error("exec update failed : ", err, ";  sql : ", updateSQL)
+		l.Fail(err.Error())
 		return 0, err
 	}
+	l.Success()
 	return result.RowsAffected()
 }
 
@@ -402,7 +427,6 @@ func (m *ShardingModelManager) UpdateByCond(params map[string]interface{}, cond 
 func (m *ShardingModelManager) Delete(cond interface{}) (int64, error) {
 	// 构造删除语句
 	delSQL, err := m.BuildDeleteSql(cond)
-	xlog.Use("db").Debugf("* Delete : %s", delSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -411,12 +435,17 @@ func (m *ShardingModelManager) Delete(cond interface{}) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	// 获取日志对象
+	l := NewLogger()
+	l.SetCommand(delSQL)
+	defer l.Close()
 	// 执行删除操作
 	result, err := conn.Exec(delSQL)
 	if err != nil {
-		xlog.Use("db").Error("exec delete failed : ", err, ";  sql : ", delSQL)
+		l.Fail(err.Error())
 		return 0, err
 	}
+	l.Success()
 	return result.RowsAffected()
 }
 

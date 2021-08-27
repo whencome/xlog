@@ -8,7 +8,7 @@ import (
     "reflect"
     "strconv"
     "strings"
-    
+
     "github.com/whencome/xlog"
 )
 
@@ -129,7 +129,7 @@ func (mm *ModelManager) SetDBInitFunc(f func()(*sql.DB, error)) {
 // GetConnection 获取数据库连接
 func (mm *ModelManager) GetConnection() (*sql.DB, error) {
     if mm.GetDBFunc == nil {
-        xlog.Use("db").Errorf("[%s.%s] mm.GetDBFunc is nil", mm.GetDatabase(), mm.GetTableName())
+        xlog.Errorf("[%s.%s] mm.GetDBFunc is nil", mm.GetDatabase(), mm.GetTableName())
     }
     return mm.GetDBFunc()
 }
@@ -148,7 +148,7 @@ func (mm *ModelManager) NewOrCondition() *Condition {
 func (mm *ModelManager) NewQuerier() *Querier {
     conn, err := mm.GetConnection()
     if err != nil {
-        xlog.Use("db").Errorf("get db [%s] connection failed: %s", mm.GetDatabase(), err)
+        xlog.Errorf("get db [%s] connection failed: %s", mm.GetDatabase(), err)
         conn = nil
     }
     return NewModelQuerier(mm.Model).Connect(conn).SetOptions(mm.Settings).Select(mm.QueryFieldsString())
@@ -159,7 +159,7 @@ func (mm *ModelManager) NewRawQuerier(querySQL string) *Querier {
     // 获取数据库连接
     conn, err := mm.GetConnection()
     if err != nil {
-        xlog.Use("db").Errorf("get db [%s] connection failed: %s", mm.GetDatabase(), err)
+        xlog.Errorf("get db [%s] connection failed: %s", mm.GetDatabase(), err)
         conn = nil
     }
     return NewRawQuerier(querySQL).SetOptions(mm.Settings).Connect(conn)
@@ -169,7 +169,7 @@ func (mm *ModelManager) NewRawQuerier(querySQL string) *Querier {
 func (mm *ModelManager) NewCommander() *Commander {
     conn, err := mm.GetConnection()
     if err != nil {
-        xlog.Use("db").Errorf("get db [%s] connection failed: %s", mm.GetDatabase(), err)
+        xlog.Errorf("get db [%s] connection failed: %s", mm.GetDatabase(), err)
         conn = nil
     }
     return NewCommander(mm.Settings).Connect(conn)
@@ -474,7 +474,6 @@ func (mm *ModelManager) BuildDeleteSql(conds interface{}) (string, error) {
 func (mm *ModelManager) Insert(obj interface{}) (int64, error) {
     // 构造插入语句
     insertSQL, err := mm.BuildInsertSql(obj)
-    xlog.Use("db").Debugf("* Insert : %s", insertSQL)
     if err != nil {
         return 0, err
     }
@@ -484,11 +483,16 @@ func (mm *ModelManager) Insert(obj interface{}) (int64, error) {
         return 0, err
     }
     // 执行插入操作
+    l := NewLogger()
+    l.SetCommand(insertSQL)
+    defer l.Close()
+    // 执行插入操作
     result, err := conn.Exec(insertSQL)
     if err != nil {
-        xlog.Use("db").Error("exec insert failed : ", err, ";  sql : ", insertSQL)
+        l.Fail(err.Error())
         return 0, err
     }
+    l.Success()
     return result.LastInsertId()
 }
 
@@ -496,7 +500,6 @@ func (mm *ModelManager) Insert(obj interface{}) (int64, error) {
 func (mm *ModelManager) InsertBatch(objs interface{}) (int64, error) {
     // 构造插入语句
     insertSQL, err := mm.BuildBatchInsertSql(objs)
-    xlog.Use("db").Debugf("* Batch Insert : %s", insertSQL)
     if err != nil {
         return 0, err
     }
@@ -505,12 +508,17 @@ func (mm *ModelManager) InsertBatch(objs interface{}) (int64, error) {
     if err != nil {
         return 0, err
     }
+    // 获取日志对象
+    l := NewLogger()
+    l.SetCommand(insertSQL)
+    defer l.Close()
     // 执行插入操作
     _, err = conn.Exec(insertSQL)
     if err != nil {
-        xlog.Use("db").Error("exec batch insert failed : ", err, ";  sql : ", insertSQL)
+        l.Fail(err.Error())
         return 0, err
     }
+    l.Success()
     // 只返回是否成功
     return 1, nil
 }
@@ -518,7 +526,6 @@ func (mm *ModelManager) InsertBatch(objs interface{}) (int64, error) {
 // ReplaceInto 批量插入/更新数据
 func (mm *ModelManager) ReplaceInto(objs interface{}) (int64, error) {
     replaceSQL, err := mm.BuildReplaceIntoSql(objs)
-    xlog.Use("db").Debugf("* SQL : %s", replaceSQL)
     if err != nil {
         return 0, err
     }
@@ -527,12 +534,17 @@ func (mm *ModelManager) ReplaceInto(objs interface{}) (int64, error) {
     if err != nil {
         return 0, err
     }
+    // 获取日志对象
+    l := NewLogger()
+    l.SetCommand(replaceSQL)
+    defer l.Close()
     // 执行插入操作
     _, err = conn.Exec(replaceSQL)
     if err != nil {
-        xlog.Use("db").Error("exec failed : ", err, ";  sql : ", replaceSQL)
+        l.Fail(err.Error())
         return 0, err
     }
+    l.Success()
     // 只返回是否成功
     return 1, nil
 }
@@ -541,7 +553,6 @@ func (mm *ModelManager) ReplaceInto(objs interface{}) (int64, error) {
 func (mm *ModelManager) Update(obj interface{}) (int64, error) {
     // 构造更新语句
     updateSQL, err := mm.BuildUpdateSql(obj)
-    xlog.Use("db").Debugf("* Update : %s", updateSQL)
     if err != nil {
         return 0, err
     }
@@ -550,12 +561,17 @@ func (mm *ModelManager) Update(obj interface{}) (int64, error) {
     if err != nil {
         return 0, err
     }
+    // 获取日志对象
+    l := NewLogger()
+    l.SetCommand(updateSQL)
+    defer l.Close()
     // 执行插入操作
     result, err := conn.Exec(updateSQL)
     if err != nil {
-        xlog.Use("db").Error("exec update failed : ", err, ";  sql : ", updateSQL)
+        l.Fail(err.Error())
         return 0, err
     }
+    l.Success()
     return result.RowsAffected()
 }
 
@@ -563,7 +579,6 @@ func (mm *ModelManager) Update(obj interface{}) (int64, error) {
 func (mm *ModelManager) UpdateByCond(params map[string]interface{}, cond interface{}) (int64, error) {
     // 构造更新语句
     updateSQL, err := mm.BuildUpdateSqlByCond(params, cond)
-    xlog.Use("db").Debugf("* UpdateByCond : %s", updateSQL)
     if err != nil {
         return 0, err
     }
@@ -572,12 +587,17 @@ func (mm *ModelManager) UpdateByCond(params map[string]interface{}, cond interfa
     if err != nil {
         return 0, err
     }
+    // 获取日志对象
+    l := NewLogger()
+    l.SetCommand(updateSQL)
+    defer l.Close()
     // 执行更新操作
     result, err := conn.Exec(updateSQL)
     if err != nil {
-        xlog.Use("db").Error("exec update failed : ", err, ";  sql : ", updateSQL)
+        l.Fail(err.Error())
         return 0, err
     }
+    l.Success()
     return result.RowsAffected()
 }
 
@@ -585,7 +605,6 @@ func (mm *ModelManager) UpdateByCond(params map[string]interface{}, cond interfa
 func (mm *ModelManager) Delete(cond interface{}) (int64, error) {
     // 构造删除语句
     delSQL, err := mm.BuildDeleteSql(cond)
-    xlog.Use("db").Debugf("* Delete : %s", delSQL)
     if err != nil {
         return 0, err
     }
@@ -594,12 +613,17 @@ func (mm *ModelManager) Delete(cond interface{}) (int64, error) {
     if err != nil {
         return 0, err
     }
+    // 获取日志对象
+    l := NewLogger()
+    l.SetCommand(delSQL)
+    defer l.Close()
     // 执行删除操作
     result, err := conn.Exec(delSQL)
     if err != nil {
-        xlog.Use("db").Error("exec delete failed : ", err, ";  sql : ", delSQL)
+        l.Fail(err.Error())
         return 0, err
     }
+    l.Success()
     return result.RowsAffected()
 }
 

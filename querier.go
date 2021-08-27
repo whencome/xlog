@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/whencome/xlog"
-
 	"github.com/whencome/gomodel/sqlchecker"
 )
 
@@ -459,10 +457,8 @@ func (q *Querier) Query() (*QueryResult, error) {
 	// 构建查询
 	err := q.buildQuery()
 	if err != nil {
-		xlog.Use("db").Errorf("[querier] build query failed: %s", err)
 		return nil, err
 	}
-	xlog.Use("db").Debugf("[querier] Query : %s", q.QuerySQL)
 	// 执行查询前的检查
 	err = q.doPreQueryCheck()
 	if err != nil {
@@ -470,10 +466,21 @@ func (q *Querier) Query() (*QueryResult, error) {
 	}
 	// 执行查询
 	result := NewQueryResult()
+
+	// 获取日志对象
+	l := NewLogger()
+	l.SetCommand(q.QuerySQL)
+	defer l.Close()
+
+	// 执行查询
 	rows, err := q.conn.Query(q.QuerySQL)
 	if err != nil {
+		l.Fail(err.Error())
 		return nil, err
 	}
+	l.Success()
+
+	// 读取数据
 	result.Columns, err = rows.Columns()
 	if err != nil {
 		return nil, err
@@ -518,19 +525,26 @@ func (q *Querier) queryTotalCount() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	xlog.Use("db").Debugf("querier queryTotalCount : %s", countQuery)
 	// 执行查询前的检查
 	err = q.doPreQueryCheck()
 	if err != nil {
 		return 0, err
 	}
+
+	// 获取日志对象
+	l := NewLogger()
+	l.SetCommand(countQuery)
+	defer l.Close()
+
 	// 查询
 	countRow := q.conn.QueryRow(countQuery)
 	var totalCount int
 	err = countRow.Scan(&totalCount)
 	if err != nil {
+		l.Fail(err.Error())
 		return 0, err
 	}
+	l.Success()
 	return totalCount, nil
 }
 

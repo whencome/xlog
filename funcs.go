@@ -3,7 +3,10 @@ package gomodel
 import (
 	"bytes"
 	"fmt"
+	"github.com/whencome/xlog"
 	"strings"
+
+	"github.com/whencome/xlog/logger"
 )
 
 // quote 对字段进行处理
@@ -121,3 +124,10 @@ func transValue2Array(value interface{}) []interface{} {
 	}
 	return inVales
 }
+
+// 获取一个地址对象
+func getLogger() *logger.KVLogger {
+	return xlog.NewTimerKVLogger(xlog.Use("db"))
+}
+
+
