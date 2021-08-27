@@ -49,6 +49,10 @@ func NewKVData() *KVData {
 	}
 }
 
+func (d *KVData) Size() int {
+	return len(d.keys)
+}
+
 func (d *KVData) Put(k string, v interface{}) {
 	// 检查k是否存在
 	if _, ok := d.pairs[k]; !ok {
@@ -153,11 +157,13 @@ func (l *KVLogger) fill() {
 }
 
 func (l *KVLogger) Write() (int, error) {
-	l.fill()
-	data := l.data.GetJson()
-	if len(data) == 0 || l.writer == nil {
+	// 如果每页数据则不处理
+	if l.data.Size() == 0 || l.writer == nil {
 		return 0, nil
 	}
+	// 填充数据（只有在有其他数据时才填充数据）
+	l.fill()
+	data := l.data.GetJson()
 	v := []byte(data)
 	if len(v) == 0 || v[len(v)-1] != '\n' {
 		v = append(v, '\n')

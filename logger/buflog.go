@@ -143,7 +143,6 @@ func (l *BufLogger) Errorln(v ...interface{}) {
 
 func (l *BufLogger) Write() (int, error) {
 	if len(l.buf) == 0 || l.writer == nil {
-		fmt.Printf("buffer or writer empty, buf size = %d\n", len(l.buf))
 		return 0, nil
 	}
 	if len(l.buf) == 0 || l.buf[len(l.buf)-1] != '\n' {
