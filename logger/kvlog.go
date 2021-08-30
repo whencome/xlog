@@ -159,6 +159,7 @@ func (l *KVLogger) fill() {
 func (l *KVLogger) Write() (int, error) {
 	// 如果每页数据则不处理
 	if l.data.Size() == 0 || l.writer == nil {
+		l.Reset()
 		return 0, nil
 	}
 	// 填充数据（只有在有其他数据时才填充数据）
