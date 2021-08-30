@@ -13,7 +13,7 @@ type Logger struct {
 
 func NewLogger() *Logger {
 	return &Logger{
-		l:xlog.NewTimerKVLogger(xlog.Use("db")),
+		l:xlog.NewTimerKVLogger(xlog.MustUse("db")),
 	}
 }
 

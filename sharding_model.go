@@ -291,7 +291,6 @@ func (m *ShardingModelManager) BuildDeleteSql(conds interface{}) (string, error)
 func (m *ShardingModelManager) Insert(obj interface{}) (int64, error) {
 	// 构造插入语句
 	insertSQL, err := m.BuildInsertSql(obj)
-	xlog.Use("db").Debugf("* Insert : %s", insertSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -318,7 +317,6 @@ func (m *ShardingModelManager) Insert(obj interface{}) (int64, error) {
 func (m *ShardingModelManager) InsertBatch(objs interface{}) (int64, error) {
 	// 构造插入语句
 	insertSQL, err := m.BuildBatchInsertSql(objs)
-	xlog.Use("db").Debugf("* Batch Insert : %s", insertSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -345,7 +343,6 @@ func (m *ShardingModelManager) InsertBatch(objs interface{}) (int64, error) {
 // ReplaceInto 批量插入/更新数据
 func (mm *ShardingModelManager) ReplaceInto(objs interface{}) (int64, error) {
 	replaceSQL, err := mm.BuildReplaceIntoSql(objs)
-	xlog.Use("db").Debugf("* SQL : %s", replaceSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -373,7 +370,6 @@ func (mm *ShardingModelManager) ReplaceInto(objs interface{}) (int64, error) {
 func (m *ShardingModelManager) Update(obj interface{}) (int64, error) {
 	// 构造更新语句
 	updateSQL, err := m.BuildUpdateSql(obj)
-	xlog.Use("db").Debugf("* Update : %s", updateSQL)
 	if err != nil {
 		return 0, err
 	}
@@ -400,7 +396,6 @@ func (m *ShardingModelManager) Update(obj interface{}) (int64, error) {
 func (m *ShardingModelManager) UpdateByCond(params map[string]interface{}, cond interface{}) (int64, error) {
 	// 构造更新语句
 	updateSQL, err := m.BuildUpdateSqlByCond(params, cond)
-	xlog.Use("db").Debugf("* UpdateByCond : %s", updateSQL)
 	if err != nil {
 		return 0, err
 	}

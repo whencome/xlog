@@ -8,5 +8,5 @@ github.com/go-sql-driver/mysql v1.5.0 h1:ozyZYNQW3x3HtqT1jira07DN2PArx2v7/mN66gG
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/whencome/sqlparser v0.0.0-20201124134240-8655a1792dc5 h1:AHEOv+pQRowrB2BZ5Scv0FRTXbe2a9K6F8VTw84ON3w=
 github.com/whencome/sqlparser v0.0.0-20201124134240-8655a1792dc5/go.mod h1:29O/lJbCHnCtDFCKggvoR5MerVNT/OLLOznlnXy1Wjw=
-github.com/whencome/xlog v1.2.2 h1:xsOWd3xNcaIe1bz77Okh5K0ZNmgYl8Y3tp1kr9nLUlg=
-github.com/whencome/xlog v1.2.2/go.mod h1:xKSsdqf72zFOpLuctC7CxU6WKAK0OlDKaM2vEGsdu60=
+github.com/whencome/xlog v1.2.3 h1:ayNAmX0689Mnc+aQ//TxbwEX0qJeNOQWhVnauMOc86k=
+github.com/whencome/xlog v1.2.3/go.mod h1:xKSsdqf72zFOpLuctC7CxU6WKAK0OlDKaM2vEGsdu60=
