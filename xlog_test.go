@@ -102,7 +102,7 @@ func TestLogJson(t *testing.T) {
 	Json(data)
 }
 
-func TestKVlogger(t *testing.T) {
+func TestKVLogger(t *testing.T) {
 	logger := NewKVLogger(os.Stdout)
 	logger.Put("query", "select * from table where id > 0 limit 20")
 	logger.Put("start", "2021-08-17 10:00:00.023")
@@ -111,7 +111,7 @@ func TestKVlogger(t *testing.T) {
 	logger.Write()
 }
 
-func TestTimerKVlogger(t *testing.T) {
+func TestTimerKVLogger(t *testing.T) {
 	logger := NewTimerKVLogger(os.Stdout)
 	logger.Put("query", "select * from table where id > 0 limit 20")
 	logger.Put("start", "2021-08-17 10:00:00.023")
@@ -121,7 +121,7 @@ func TestTimerKVlogger(t *testing.T) {
 	logger.Write()
 }
 
-func TestTimerKVlogger1(t *testing.T) {
+func TestTimerKVLogger1(t *testing.T) {
 	logger := NewTimerKVLogger(os.Stdout)
 	logger.Put("query", "select * from table where id > 0 limit 20")
 	logger.Put("start", "2021-08-17 10:00:00.023")
@@ -132,7 +132,7 @@ func TestTimerKVlogger1(t *testing.T) {
 	logger.Write()
 }
 
-func TestTimerKVlogger2(t *testing.T) {
+func TestTimerKVLogger2(t *testing.T) {
 	logger := NewTimerKVLogger(os.Stdout)
 	logger.Put("query", "select * from table where id > 0 limit 20")
 	logger.Put("start", "2021-08-17 10:00:00.023")
@@ -140,6 +140,16 @@ func TestTimerKVlogger2(t *testing.T) {
 	logger.Put("cost", "0.91s")
 	logger.Put("message", "测试一下中文内容")
 	logger.Put("content", []interface{}{1,2,3,"what this?", map[string]int{"smith":78, "jack":99}})
+	logger.Write()
+}
+
+func TestNilWriterTimerKVLogger(t *testing.T) {
+	logger := NewTimerKVLogger(MustUse("db"))
+	logger.Put("query", "select * from table where id > 0 limit 20")
+	logger.Put("start", "2021-08-17 10:00:00.023")
+	logger.Put("end", "2021-08-17 10:00:00.114")
+	logger.Put("cost", "0.91s")
+	logger.Put("message", "测试一下中文内容")
 	logger.Write()
 }
 

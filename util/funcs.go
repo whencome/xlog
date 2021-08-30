@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -137,4 +138,23 @@ func FormatLogPrefix(buf *[]byte, logFlags int, t time.Time, level string, file 
 		Itoa(buf, line, -1)
 		*buf = append(*buf, ": "...)
 	}
+}
+
+// IsNil 判断给定的值是否为nil
+func IsNil(i interface{}) bool {
+	ret := i == nil
+	// 需要进一步做判断
+	if !ret {
+		vi := reflect.ValueOf(i)
+		kind := reflect.ValueOf(i).Kind()
+		if kind == reflect.Slice ||
+			kind == reflect.Map ||
+			kind == reflect.Chan ||
+			kind == reflect.Interface ||
+			kind == reflect.Func ||
+			kind == reflect.Ptr {
+			return vi.IsNil()
+		}
+	}
+	return ret
 }

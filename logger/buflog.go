@@ -142,7 +142,7 @@ func (l *BufLogger) Errorln(v ...interface{}) {
 }
 
 func (l *BufLogger) Write() (int, error) {
-	if len(l.buf) == 0 || l.writer == nil {
+	if len(l.buf) == 0 || util.IsNil(l.writer) {
 		l.Reset()
 		return 0, nil
 	}

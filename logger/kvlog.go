@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/whencome/xlog/util"
 	"io"
 	"strconv"
 	"strings"
@@ -113,7 +114,6 @@ func (d *KVData) GetJson() string {
 	return buf.String()
 }
 
-
 //-------------- KVLogger ---------------
 type KVLogger struct {
 	writer     io.Writer
@@ -158,7 +158,7 @@ func (l *KVLogger) fill() {
 
 func (l *KVLogger) Write() (int, error) {
 	// 如果每页数据则不处理
-	if l.data.Size() == 0 || l.writer == nil {
+	if l.data.Size() == 0 || util.IsNil(l.writer) {
 		l.Reset()
 		return 0, nil
 	}
