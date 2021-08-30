@@ -147,6 +147,19 @@ func Use(k string) *StdLogger {
 	return sl
 }
 
+// 强制使用指定的日志对象
+func MustUse(k string) *StdLogger {
+	l, ok := loggerMaps.Load(k)
+	if !ok {
+		return nil
+	}
+	sl, ok := l.(*StdLogger)
+	if !ok {
+		return nil
+	}
+	return sl
+}
+
 // NewKVLogger 创建一个普通的KVLogger
 func NewKVLogger(w io.Writer) *logger.KVLogger {
 	return logger.NewKVLogger(w)
