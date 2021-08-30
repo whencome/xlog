@@ -134,6 +134,14 @@ func Register(k string, cfg *Config) {
 	loggerMaps.Store(k, stdLogger)
 }
 
+// 清除全部日志设置
+func Clear() {
+	loggerMaps.Range(func(key, value interface{}) bool {
+		loggerMaps.Delete(key)
+		return true
+	})
+}
+
 // 选择需要使用的日志对象
 func Use(k string) *StdLogger {
 	l, ok := loggerMaps.Load(k)
