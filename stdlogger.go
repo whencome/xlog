@@ -97,6 +97,11 @@ func (l *StdLogger) Output(calldepth int, level, s string) error {
 	var line int
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	// if Writer is nil, then there is no need to add logs to buffer
+	if l.Out == nil {
+		return nil
+	}
+	// build log prefix
 	if l.def.Flags & (def.Lshortfile | def.Llongfile) != 0 {
 		// Release lock while getting caller info - it's expensive.
 		l.mu.Unlock()
@@ -167,14 +172,42 @@ func (l *StdLogger) flush() error {
 			go func() {
 				x, ok := oldWriter.(io.Closer)
 				if ok {
-					x.Close()
+					_ = x.Close()
 				}
 			}()
 		}
 	}
 	// 输出日志
+	if len(l.buf) == 0 {
+		return nil
+	}
 	_, err := l.Out.Write(l.buf)
+	if err == nil {
+		l.buf = l.buf[:0]
+	}
 	return err
+}
+
+// Close 关闭日志对象
+func (l *StdLogger) Close() error {
+	// flush cache logs
+	err := l.flush()
+	if err != nil {
+		return err
+	}
+	// lock
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	// close logger
+	x, ok := l.Out.(io.Closer)
+	if ok {
+		err = x.Close()
+		if err != nil {
+			return err
+		}
+	}
+	l.Out = nil
+	return nil
 }
 
 func (l *StdLogger) levelLog(level, data string) {

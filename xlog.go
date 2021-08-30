@@ -137,6 +137,13 @@ func Register(k string, cfg *Config) {
 // 清除全部日志设置
 func Clear() {
 	loggerMaps.Range(func(key, value interface{}) bool {
+		k, ok := key.(string)
+		if ok {
+			l := MustUse(k)
+			if l != nil {
+				l.Close()
+			}
+		}
 		loggerMaps.Delete(key)
 		return true
 	})

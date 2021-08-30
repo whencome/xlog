@@ -219,3 +219,28 @@ func TestStackBufLog(t *testing.T) {
 	bufLog.Error("error log")
 	bufLog.Close()
 }
+
+func TestCloseLogger(t *testing.T) {
+	// 设置日志输出类型
+	// LogToFile - 输出到文件
+	// LogToStdout - 输出到标准输出
+	// LogToStderr - 输出到标准错误输出
+	SetLogOutputType(def.LogToStdout)
+	// 设置日志等级，开发时可详尽记录日志，发布线上是修改此处的等级即可
+	// 因此，此处的值建议放到配置文件中
+	SetLogLevel(def.LogLevelDebug)
+	// 设置flag，此处的内容与golang中的log包的相关设置相同
+	// 注意此处的包是xlog，不是log
+	SetLogFlags(def.Ldate | def.Ltime | def.Lmicroseconds | def.Llongfile)
+
+	Init(nil)
+
+	// 测试日志输出
+	Info("log before closed")
+	Use("default").Close()
+	fmt.Printf("start to test closed logger")
+	for i := 0; i < 100; i++ {
+		Infof("log after closed of [%d]", i)
+	}
+	fmt.Printf("test finished")
+}
