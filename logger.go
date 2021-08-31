@@ -4,6 +4,7 @@ import (
 	"github.com/whencome/xlog"
 	"github.com/whencome/xlog/logger"
 	"io"
+	"regexp"
 	"strings"
 )
 
@@ -23,10 +24,22 @@ func CustomLogger(w io.Writer) *Logger {
 	}
 }
 
+func (l *Logger) getSQLCommand(q string) string {
+	q = strings.TrimSpace(q)
+	p, err := regexp.Compile(`\s`)
+	if err != nil {
+		return strings.ToUpper(q[:strings.Index(q, " ")])
+	}
+	s := p.Split(q, -1)
+	if len(s) > 0 {
+		return strings.ToUpper(s[0])
+	}
+	return strings.ToUpper(q[:strings.Index(q, " ")])
+}
+
 func (l *Logger) SetCommand(q string) {
 	q = strings.TrimSpace(q)
-	command := q[:strings.Index(q, " ")]
-	l.l.Put("command", command)
+	l.l.Put("command", l.getSQLCommand(q))
 	l.l.Put("sql", q)
 }
 
