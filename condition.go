@@ -169,6 +169,13 @@ func (cb *ConditionBuilder) buildCondition(conds interface{}, logic string) (str
             }
             cb.addSQLCondition(buffer, logic, sqlPatch)
         }
+    case *Condition:
+        c := conds.(*Condition)
+        sqlPatch, err := c.Build()
+        if err != nil {
+            return "", err
+        }
+        cb.addSQLCondition(buffer, logic, sqlPatch)
     default:
         return "", fmt.Errorf("unsupported condition data type %T of %#v", conds, conds)
     }
