@@ -1,40 +1,40 @@
 # xlog
-一个简单的日志工具，支持按自动按时间记录到不同的文件，支持按日志等级记录日志，支持自定义输出，支持同时将多个不同的日志输出到不同的地方
+һ���򵥵���־���ߣ�֧�ְ��Զ���ʱ���¼����ͬ���ļ���֧�ְ���־�ȼ���¼��־��֧���Զ��������֧��ͬʱ�������ͬ����־�������ͬ�ĵط�
 
-## 特点
+## �ص�
 
-* 支持自定义日志输出，包括输出到文件（可以自定义日志目录）、标准输出、标准错误输出
-* （记录日志到文件）支持根据定义的时间间隔将日志输出到不同的文件，比如按小时、按日、按月、按年输出到不同的日志文件
-* 支持日志等级，分为：debug、info、warn、error、fatal，可以在代码中记录详细的日志，后期发布直接修改日志等级即可实现控制日志输出，不用修改代码
-* 部分功能直接与golang原生的log相同（直接拷贝的相关代码），比如flag
-* 2021.05.07 支持将不同的日志以不同的方式输出到不同的地方
+* ֧���Զ�����־���������������ļ��������Զ�����־Ŀ¼������׼�������׼�������
+* ����¼��־���ļ���֧�ָ��ݶ����ʱ��������־�������ͬ���ļ������簴Сʱ�����ա����¡������������ͬ����־�ļ�
+* ֧����־�ȼ�����Ϊ��debug��info��warn��error��fatal�������ڴ����м�¼��ϸ����־�����ڷ���ֱ���޸���־�ȼ�����ʵ�ֿ�����־����������޸Ĵ���
+* ���ֹ���ֱ����golangԭ����log��ͬ��ֱ�ӿ�������ش��룩������flag
+* 2021.05.07 ֧�ֽ���ͬ����־�Բ�ͬ�ķ�ʽ�������ͬ�ĵط�
 
-## 使用示例
+## ʹ��ʾ��
 
-### step1. 初始化日志信息（全局默认）
+### step1. ��ʼ����־��Ϣ��ȫ��Ĭ�ϣ�
 
 ```go
-// 设置日志输出类型
-// LogToFile - 输出到文件
-// LogToStdout - 输出到标准输出
-// LogToStderr - 输出到标准错误输出
+// ������־�������
+// LogToFile - ������ļ�
+// LogToStdout - �������׼���
+// LogToStderr - �������׼�������
 xlog.SetLogOutputType(xlog.LogToFile)
-// 设置日志等级，开发时可详尽记录日志，发布线上是修改此处的等级即可
-// 因此，此处的值建议放到配置文件中
+// ������־�ȼ�������ʱ���꾡��¼��־�������������޸Ĵ˴��ĵȼ�����
+// ��ˣ��˴���ֵ����ŵ������ļ���
 xlog.SetLogLevel(xlog.LogLevelDebug)
-// 设置flag，此处的内容与golang中的log包的相关设置相同
-// 注意此处的包是xlog，不是log
+// ����flag���˴���������golang�е�log�������������ͬ
+// ע��˴��İ���xlog������log
 xlog.SetLogFlags(xlog.Ldate | xlog.Ltime | xlog.Lmicroseconds | xlog.Llongfile)
-// 设置日志文件存储目录，仅当输出类型为 LogToFile 有效
+// ������־�ļ��洢Ŀ¼�������������Ϊ LogToFile ��Ч
 xlog.SetLogDir("/home/logs/test")
-// 设置日志文件切割类型
+// ������־�ļ��и�����
 xlog.SetLogRotateType(xlog.RotateByDate)
-// 设置日志文件名前缀，仅当输出类型为 LogToFile 有效
+// ������־�ļ���ǰ׺�������������Ϊ LogToFile ��Ч
 xlog.SetLogFilePrefix("test_")
 xlog.Init(nil)
 ```
 
-也可以通过配置直接快速初始化日志对象，如：
+Ҳ����ͨ������ֱ�ӿ��ٳ�ʼ����־�����磺
 ```go
 cfg := &xlog.Config{
     LogPath : "/home/logs/test",
@@ -42,15 +42,15 @@ cfg := &xlog.Config{
     Output : "file",
     LogLevel : "debug",
     Rotate : "date",
-    LogStackLevel : "error", // 如果设置为none表示始终不记录stack信息
+    LogStackLevel : "error", // �������Ϊnone��ʾʼ�ղ���¼stack��Ϣ
 }
 xlog.Init(cfg)
 ```
 
-### step2. 在代码中记录日志
+### step2. �ڴ����м�¼��־
 
 ```go
-// 记录debug日志，等级最低
+// ��¼debug��־���ȼ����
 xlog.Debug("debug log info here")
 xlog.Debugln("debug log info here")
 xlog.Debugf("debug log info here: %s", "test")
@@ -77,9 +77,9 @@ xlog.Panicln("panic log info here")
 xlog.Panicf("panic log info here: %s", "test")
 ```
 
-## 修改日志
+## �޸���־
 
-* 2021.05.07 支持将不同的日志输出到不同的地方，示例如下：
+* 2021.05.07 ֧�ֽ���ͬ����־�������ͬ�ĵط���ʾ�����£�
 ```go
 cfgs := map[string]*Config{
     "order" : &xlog.Config{
@@ -107,12 +107,12 @@ cfgs := map[string]*Config{
         LogStackLevel : "error",
     },
 }
-// 注册logger
+// ע��logger
 for k, cfg := range cfgs {
     xlog.Register(k, cfg)
 }
 
-// 写日志
+// д��־
 xlog.Use("order").Info("order log content")
 xlog.Use("api").Debug("api log content")
 xlog.Use("curl").Error("curl log content")
