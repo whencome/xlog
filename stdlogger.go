@@ -211,13 +211,16 @@ func (l *StdLogger) Close() error {
 }
 
 func (l *StdLogger) levelLog(level, data string) {
+	if l.def.Disabled {
+		return
+	}
 	numLevel := util.NumLogLevel(level)
 	if numLevel < l.def.Level {
 		return
 	}
-	l.Output(3, level, data)
+	_ = l.Output(3, level, data)
 	if l.def.LogStack && numLevel >= l.def.LogStackLevel {
-		l.Output(3, level, string(debug.Stack()))
+		_ = l.Output(3, level, string(debug.Stack()))
 	}
 }
 

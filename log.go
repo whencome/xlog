@@ -12,6 +12,9 @@ import (
 
 func levelLog(level, data string) {
 	l := Use("default")
+	if l.def.Disabled {
+		return
+	}
 	numLevel := util.NumLogLevel(level)
 	if numLevel < l.def.Level {
 		return
