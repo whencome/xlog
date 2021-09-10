@@ -184,7 +184,7 @@ func (l *StdLogger) flush() error {
 		}
 	}
 	// 输出日志
-	if len(l.buf) == 0 {
+	if len(l.buf) == 0 || l.Out == nil {
 		return nil
 	}
 	_, err := l.Out.Write(l.buf)
