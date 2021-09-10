@@ -26,7 +26,7 @@ func NewBufLogger(w io.Writer) *BufLogger {
 		writer:     w,
 		mu:         sync.Mutex{},
 		buf:        make([]byte, 0),
-		bufSize:    10240, // 10k
+		bufSize:    1024, // 1k
 		logStack:   false,
 		stackLevel: def.LevelError,
 	}
@@ -37,7 +37,7 @@ func NewStackBufLogger(w io.Writer) *BufLogger {
 		writer:     w,
 		mu:         sync.Mutex{},
 		buf:        make([]byte, 0),
-		bufSize:    10240, // 10k
+		bufSize:    1024, // 1k
 		logStack:   true,
 		stackLevel: def.LevelError,
 	}
@@ -77,7 +77,7 @@ func (l *BufLogger) levelLog(level, data string) {
 	}
 	// 如果超过缓冲区大小，则强制写入
 	if len(l.buf) >= l.bufSize {
-		l.Write()
+		_, _ = l.Write()
 	}
 }
 

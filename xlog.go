@@ -57,7 +57,7 @@ func SetLogFilePrefix(prefix string) {
 
 // SetLogDir 设置日志存储目录
 func SetLogDir(path string) {
-	util.InitLogDir(path)
+	_, _ = util.InitLogDir(path)
 	LogDir = path
 }
 
@@ -141,7 +141,7 @@ func Clear() {
 		if ok {
 			l := MustUse(k)
 			if l != nil {
-				l.Close()
+				_ = l.Close()
 			}
 		}
 		loggerMaps.Delete(key)
@@ -194,4 +194,3 @@ func NewBufLogger(w io.Writer) *logger.BufLogger {
 func NewStackBufLogger(w io.Writer) *logger.BufLogger {
 	return logger.NewStackBufLogger(w)
 }
-

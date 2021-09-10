@@ -254,3 +254,42 @@ func TestCloseLogger(t *testing.T) {
 	}
 	fmt.Printf("test finished")
 }
+
+// 测试更新配置
+func TestSwitchCfg(t *testing.T) {
+	cfg := &Config{
+		LogPath : "/home/logs/test",
+		LogPrefix : "buf_api_",
+		Output : "stdout",
+		LogLevel : "debug",
+		Rotate : "date",
+		LogStackLevel : "error",
+		ColorfulPrint:true,
+		Switch:"on",
+}
+	logCat := "api"
+	switches := map[int]string{
+		0:"on",
+		1:"off",
+	}
+	i := 0
+	ticker := time.NewTicker(time.Second * 3)
+	for {
+		<-ticker.C
+		idx := i % 2
+		sw := switches[idx]
+		cfg.Switch = sw
+		fmt.Printf("[%d] cfg: %+v\n", i, cfg)
+		Clear()
+		Register(logCat, cfg)
+		l := Use(logCat)
+		l.Debugf("TestSwitchCfg --> debug log")
+		l.Infof("TestSwitchCfg --> info log")
+		l.Warnf("TestSwitchCfg --> warn log")
+		l.Errorf("TestSwitchCfg --> error log")
+		i++
+		if i == 10 {
+			break
+		}
+	}
+}

@@ -31,7 +31,7 @@ func NewStdLogger(c *Config) *StdLogger {
 	stdLogger := &StdLogger{
 		def: def,
 		mu:  sync.Mutex{},
-		buf: make([]byte, 2048),
+		buf: make([]byte, 1024),
 	}
 	stdLogger.initOut()
 	return stdLogger
@@ -198,6 +198,10 @@ func (l *StdLogger) Close() error {
 	// lock
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	// 标准输出不需要关闭，只需要关闭文件
+	if l.def.OutputType != def.LogToFile {
+		return nil
+	}
 	// close logger
 	x, ok := l.Out.(io.Closer)
 	if ok {

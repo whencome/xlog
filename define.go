@@ -49,6 +49,7 @@ func defaultLogDefinition() *LogDefinition {
     d.LogStack = logStack
     d.LogStackLevel = logStackLevel
     d.ColorfulPrint = colorfulPrint
+    d.Disabled = false
     return d
 }
 
