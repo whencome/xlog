@@ -144,6 +144,9 @@ func (l *StdLogger) Output(calldepth int, level, s string) error {
 }
 
 func (l *StdLogger) WriteString(s string) error {
+	if l.def.Disabled {
+		return nil
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.buf = l.buf[:0]
@@ -152,6 +155,9 @@ func (l *StdLogger) WriteString(s string) error {
 }
 
 func (l *StdLogger) Write(b []byte) (int, error) {
+	if l.def.Disabled {
+		return 0, nil
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	n := len(b)
