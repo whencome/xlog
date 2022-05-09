@@ -8,11 +8,26 @@
 * 支持日志等级，分为：debug、info、warn、error、fatal，可以在代码中记录详细的日志，后期发布直接修改日志等级即可实现控制日志输出，不用修改代码
 * 部分功能直接与golang原生的log相同（直接拷贝的相关代码），比如flag
 * 2021.05.07 支持将不同的日志以不同的方式输出到不同的地方
+* 2022.05.09 支持快速返回默认配置（不使用配置文件），支持同时注册多个日志对象
 
 ## 使用示例
 
 ### step1. 初始化日志信息（全局默认）
 
+* 方式1： 使用默认配置（无需增加配置文件，代码简洁），默认篇日志默认为debug模式，所有日志输出到标准输出（控制台）
+```go
+// 使用默认配置
+cfg := xlog.DefaultConfig()
+// 如果需要修改日志级别或者输出位置，可以在这里修改cfg的参数
+xlog.Init(cfg)
+```
+如果只是用于调试，将日志输出到控制台，可以直接使用：
+```go
+// 此方式主要用于开发阶段，与上面两句的效果相同
+xlog.InitDefault()
+```
+
+* 方式2：单独设置参数（下面的方式只影响默认日志对象，如果需要其它日志对象，需要单独创建并注册）
 ```go
 // 设置日志输出类型
 // LogToFile - 输出到文件
@@ -107,10 +122,12 @@ cfgs := map[string]*Config{
         LogStackLevel : "error",
     },
 }
-// 注册logger
+// 方式1：注册logger
 for k, cfg := range cfgs {
     xlog.Register(k, cfg)
 }
+// 方式2：直接注册多个
+// xlog.RegisterMany(cfgs)
 
 // 写日志
 xlog.Use("order").Info("order log content")
