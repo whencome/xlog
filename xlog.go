@@ -119,6 +119,11 @@ func Init(cfg *Config) {
 	Register("default", cfg)
 }
 
+// Init 初始化日志设置
+func InitDefault() {
+	Register("default", DefaultConfig())
+}
+
 // 注册一个日志对象
 func Register(k string, cfg *Config) {
 	var stdLogger *StdLogger
@@ -132,6 +137,19 @@ func Register(k string, cfg *Config) {
 	// 创建一个新的logger
 	stdLogger = NewStdLogger(cfg)
 	loggerMaps.Store(k, stdLogger)
+}
+
+// 注册多个个日志对象
+func RegisterMany(cfgs map[string]*Config) {
+	if cfgs == nil || len(cfgs) == 0 {
+		return
+	}
+	for k, cfg := range cfgs {
+		if cfg == nil {
+			return
+		}
+		Register(k, cfg)
+	}
 }
 
 // 清除全部日志设置
